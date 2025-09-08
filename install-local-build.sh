@@ -1,27 +1,29 @@
 #!/bin/bash -e
 
-name=deepseek-r1
+# load snapcraft.yaml into variable, explode to evaluate aliases
+snapcraft_yaml=$(yq '. | explode(.)' snap/snapcraft.yaml)
+
+snap_name=$(echo "$snapcraft_yaml" | yq '.name')
 
 architecture=$(dpkg --print-architecture)
 
-stack=$1
+engine=$1
 op=$2
 
-# check if stack is provided
-if [[ -z "$stack" ]]; then
-    echo "Error: Stack name is required."
-    echo "Usage: $0 <stack> [clean]"
+if [[ -z "$engine" ]]; then
+    echo "Error: Engine name is required."
+    echo "Usage: $0 <engine> [clean]"
     exit 1
 fi
 
 if [[ "$op" == "clean" ]]; then
-    sudo snap remove $name
+    sudo snap remove "$snap_name"
 fi
 
-# Validate stack name
-stack_file=./stacks/$stack/stack.yaml
-if [[ ! -f "$stack_file" ]]; then
-    echo "Unknown stack: $stack"
+# Validate engine name
+engine_file=./engines/$engine/engine.yaml
+if [[ ! -f "$engine_file" ]]; then
+    echo "Unknown engine: $engine"
     exit 1
 fi
 
@@ -31,21 +33,21 @@ if [[ "$(yq --version)" != *v4* ]]; then
     exit 1
 fi
 
-# Validate stack syntax
-yq stacks/$stack/stack.yaml > /dev/null
+# Validate engine syntax
+yq engines/$engine/engine.yaml > /dev/null
 
 # Install the snap
-# The service will first fail to start because the stack is not selected yet
-sudo snap install --dangerous $name_*_$architecture.snap
+sudo snap install --dangerous $snap_name_*_$architecture.snap
 
 # Connect interfaces
-sudo snap connect $name:home
-sudo snap connect $name:hardware-observe
+sudo snap connect $snap_name:home
+sudo snap connect $snap_name:hardware-observe
 
-# Install stack components
-cat "./stacks/$stack/stack.yaml" | yq .components[] | while read -r component; do
-    sudo snap install --dangerous ./$name+"$component"_*.comp
+
+# Install engine components
+cat "./engines/$engine/engine.yaml" | yq .components[] | while read -r component; do
+    sudo snap install --dangerous ./$snap_name+"$component"_*.comp
 done
 
-# Select a stack
-sudo $name use "$stack" --assume-yes
+# Set engine
+sudo "$snap_name" use-engine "$engine" --assume-yes
