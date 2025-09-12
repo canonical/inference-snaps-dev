@@ -2,7 +2,7 @@
 
 This is a Github Action that can be used to publish snap packages to the Snap Store.
 
-Unlike [`canonical/action-publish`](https://github.com/canonical/action-publish), this action also uploads the component snaps defined in `snap/snapcraft.yaml`.
+Unlike [`canonical/action-publish`](https://github.com/canonical/action-publish), this action also uploads the snap components defined in `snap/snapcraft.yaml`.
 
 ## Basic Usage
 
