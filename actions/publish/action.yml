@@ -17,7 +17,7 @@ inputs:
 runs:
   using: composite
   steps:
-    # Requires store crendentials secret set.
+    # Requires store credentials secret set.
     # Check README.md for steps on how to generate it and use it in workflows.
     - name: Publish snap
       shell: bash
