@@ -317,8 +317,10 @@ main() {
   log_info "Selected engine: $target_engine"
 
   # Get server settings
-  local server_port=$("$snap_name" get http.port)
-  local base_path=$($AI_SNAP_NAME get http.base-path)
+  local server_port
+  server_port=$("$snap_name" get http.port)
+  local base_path
+  base_path=$("$snap_name" get http.base-path)
   local base_url="http://localhost:$server_port"
 
   # Pre-flight checks
