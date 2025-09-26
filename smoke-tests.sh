@@ -172,7 +172,7 @@ mapfile -t src_engines < <(find "$SCRIPT_DIR/../engines" -maxdepth 1 -mindepth 1
 echo -e "Declared engines:\n${src_engines[*]}"
 
 if [[ ${#avail_engines[@]} -ne ${#src_engines[@]} ]]; then
-  exit_error "Size of available engines does not match declared engines."
+  exit_error "Number of engines reported by CLI does not match number of engine directories."
 fi
 
 # The items in both arrays should perfectly match since they are sorted
