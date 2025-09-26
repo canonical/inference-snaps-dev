@@ -1,15 +1,10 @@
 #!/bin/bash
 
-#!/bin/bash
-
 set -Eeuo pipefail
 
 # =============================================================================
 # CONFIGURATION AND GLOBALS
 # =============================================================================
-
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Configuration defaults
 TIMEOUT=5
@@ -51,7 +46,6 @@ exit_error() {
 usage() {
   echo "Usage: $0 <ai-model-snap-name> <engine>"
   echo "Runs smoke tests for one specified engine against a local AI model snap."
-  exit 1
 }
 
 # =============================================================================
@@ -66,8 +60,8 @@ check_root_privileges() {
 
 validate_arguments() {
   if [ $# -lt 2 ]; then
-    exit_error "Engine and snap name are required."
     usage
+    exit_error "Engine and snap name are required."
   fi
 }
 
@@ -114,7 +108,7 @@ test_chat_completion() {
     -X POST \
     -H "Content-Type: application/json" \
     -d "$chat_payload" \
-    "$base_url/v1/chat/completions" >/dev/null; then
+    "$base_url/chat/completions" >/dev/null; then
     log_info "✓ Chat completion: OK"
   else
     exit_error "Chat completion failed (may indicate service issues)"
@@ -123,6 +117,7 @@ test_chat_completion() {
 
 run_api_tests() {
   local base_url="$1"
+  local base_path="$2"
 
   log_section "API Endpoint Tests"
 
@@ -130,7 +125,7 @@ run_api_tests() {
   test_endpoint "$base_url/health" "Health check"
 
   # Test models endpoint
-  test_endpoint "$base_url/v1/models" "List available models"
+  test_endpoint "$base_url/$base_path/models" "List available models"
 
   # Test chat completion
   test_chat_completion "$base_url"
@@ -195,7 +190,7 @@ test_engine_listing() {
   mapfile -t avail_engines < <("$snap_name" list-engines | tail -n +2 | awk '{print $1}' | sort)
   echo -e "Available engines:\n${avail_engines[*]}"
 
-  mapfile -t src_engines < <(find "$SCRIPT_DIR/../engines" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
+  mapfile -t src_engines < <(find "/snap/$AI_SNAP_NAME/current/engines/" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
   echo -e "Declared engines:\n${src_engines[*]}"
 
   if [[ ${#avail_engines[@]} -ne ${#src_engines[@]} ]]; then
@@ -321,16 +316,16 @@ main() {
   log_info "Running tests against snap: $snap_name"
   log_info "Selected engine: $target_engine"
 
-  # Get server port
-  local server_port
-  server_port=$("$snap_name" get http.port)
+  # Get server settings
+  local server_port=$("$snap_name" get http.port)
+  local base_path=$($AI_SNAP_NAME get http.base-path)
   local base_url="http://localhost:$server_port"
 
   # Pre-flight checks
   check_port_listening "$server_port"
 
   # Run all test suites
-  run_api_tests "$base_url"
+  run_api_tests "$base_url" "$base_path"
   test_snap_installation "$snap_name"
   test_configuration_management "$snap_name"
   test_engine_listing "$snap_name"
