@@ -1,12 +1,50 @@
 #!/bin/bash
 
+#!/bin/bash
+
 set -Eeuo pipefail
+
+# =============================================================================
+# CONFIGURATION AND GLOBALS
+# =============================================================================
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Configuration defaults
+TIMEOUT=5
+DEFAULT_MAX_RETRIES=3
+DEFAULT_RETRY_DELAY=30
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
+
+log_info() {
+  echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+log_warning() {
+  echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+  echo -e "${RED}[ERROR]${NC} $1" >&2
+}
+
+log_section() {
+  echo -e "\n${BLUE}=== $1 ===${NC}"
+}
+
 exit_error() {
-  echo "Error: ${1}" >&2
+  log_error "$1"
   exit 1
 }
 
@@ -16,194 +54,302 @@ usage() {
   exit 1
 }
 
+# =============================================================================
+# VALIDATION FUNCTIONS
+# =============================================================================
+
+check_root_privileges() {
+  if ((EUID != 0)); then
+    exit_error "This script must be run as root or with sudo."
+  fi
+}
+
+validate_arguments() {
+  if [ $# -lt 2 ]; then
+    exit_error "Engine and snap name are required."
+    usage
+  fi
+}
+
+check_port_listening() {
+  local port="$1"
+
+  if ss -tuln | grep -q ":$port "; then
+    log_info "Port $port is listening"
+  else
+    exit_error "Port $port is not listening. Is the snap running?"
+  fi
+}
+
+# =============================================================================
+# HTTP API TESTING FUNCTIONS
+# =============================================================================
+
 test_endpoint() {
   local endpoint="$1"
   local description="$2"
-  echo "Testing $description: $endpoint"
+
+  log_info "Testing $description: $endpoint"
 
   if curl -s --fail-with-body --connect-timeout "$TIMEOUT" "$endpoint" >/dev/null; then
-    echo "✓ $description: OK"
+    log_info "✓ $description: OK"
   else
     exit_error "✗ $description: Failed (HTTP >= 400 or connection error)"
   fi
 }
 
+test_chat_completion() {
+  local base_url="$1"
+
+  log_info "Testing chat completion endpoint..."
+
+  local chat_payload='{
+        "model": "default",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "max_tokens": 5
+    }'
+
+  if curl -s --fail-with-body \
+    --connect-timeout "$TIMEOUT" \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -d "$chat_payload" \
+    "$base_url/v1/chat/completions" >/dev/null; then
+    log_info "✓ Chat completion: OK"
+  else
+    exit_error "Chat completion failed (may indicate service issues)"
+  fi
+}
+
+run_api_tests() {
+  local base_url="$1"
+
+  log_section "API Endpoint Tests"
+
+  # Test health endpoint
+  test_endpoint "$base_url/health" "Health check"
+
+  # Test models endpoint
+  test_endpoint "$base_url/v1/models" "List available models"
+
+  # Test chat completion
+  test_chat_completion "$base_url"
+}
+
+# =============================================================================
+# SNAP MANAGEMENT FUNCTIONS
+# =============================================================================
+
+test_snap_installation() {
+  local snap_name="$1"
+
+  log_section "Snap Installation Test"
+  log_info "Checking snap installation..."
+  snap list "$snap_name"
+}
+
+test_configuration_management() {
+  local snap_name="$1"
+
+  log_section "Configuration Management Tests"
+
+  log_info "Checking all configs (snap get)..."
+  snap get "$snap_name" -d
+
+  log_info "Checking all configs (snap command)..."
+  "$snap_name" get
+
+  log_info "Getting config subset..."
+  "$snap_name" get http
+
+  log_info "Getting specific config..."
+  "$snap_name" get http.port
+
+  log_info "Testing configuration change..."
+  "$snap_name" set http.port=9999
+
+  log_info "Restarting snap to apply config change..."
+  snap stop "$snap_name"
+  snap start "$snap_name"
+
+  # Verify config change persisted
+  local port
+  port=$("$snap_name" get http.port)
+  if (("$port" != 9999)); then
+    exit_error "Config change did not persist."
+  fi
+  log_info "✓ Configuration change persisted successfully"
+}
+
+# =============================================================================
+# ENGINE MANAGEMENT FUNCTIONS
+# =============================================================================
+
+test_engine_listing() {
+  local snap_name="$1"
+
+  log_section "Engine Listing Tests"
+
+  log_info "Comparing available vs declared engines..."
+
+  mapfile -t avail_engines < <("$snap_name" list-engines | tail -n +2 | awk '{print $1}' | sort)
+  echo -e "Available engines:\n${avail_engines[*]}"
+
+  mapfile -t src_engines < <(find "$SCRIPT_DIR/../engines" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
+  echo -e "Declared engines:\n${src_engines[*]}"
+
+  if [[ ${#avail_engines[@]} -ne ${#src_engines[@]} ]]; then
+    exit_error "Number of engines reported by CLI does not match number of engine directories."
+  fi
+
+  # The items in both arrays should perfectly match since they are sorted
+  if [[ "${avail_engines[*]}" != "${src_engines[*]}" ]]; then
+    exit_error "Available engines do not match declared engines."
+  fi
+
+  log_info "✓ Engine lists match successfully"
+
+  log_info "Querying individual engines..."
+  for engine in "${src_engines[@]}"; do
+    log_info "Querying engine: $engine"
+    "$snap_name" show-engine "$engine"
+  done
+}
+
 use_engine_with_retry() {
-  local engine="$1"
-  local max_retries="${2:-3}"
-  local retry_delay="${3:-30}"
+  local snap_name="$1"
+  local engine="$2"
+  local max_retries="${3:-$DEFAULT_MAX_RETRIES}"
+  local retry_delay="${4:-$DEFAULT_RETRY_DELAY}"
   local attempt=1
 
-  echo "Switching to engine: $engine"
+  log_info "Switching to engine: $engine"
 
   while [[ $attempt -le $max_retries ]]; do
-    echo "Attempt $attempt/$max_retries: Switching to engine $engine"
+    log_info "Attempt $attempt/$max_retries: Switching to engine $engine"
 
     # Temporarily disable 'set -e' to handle command failure ourselves
     set +e
     local output
     local exit_code
-    output=$("$AI_SNAP_NAME" use-engine "$engine" --assume-yes 2>&1)
+    output=$("$snap_name" use-engine "$engine" --assume-yes 2>&1)
     exit_code=$?
     # Re-enable 'set -e'
     set -e
 
     if [[ $exit_code -eq 0 ]]; then
-      echo "✓ Successfully switched to engine: $engine"
+      log_info "✓ Successfully switched to engine: $engine"
       return 0
     fi
 
     # Check if the error contains "timed out"
     if [[ "$output" =~ "timed out" ]]; then
-      echo "Engine switch timed out (attempt $attempt/$max_retries)"
+      log_warning "Engine switch timed out (attempt $attempt/$max_retries)"
       echo "Error output: $output" >&2
 
       if [[ $attempt -lt $max_retries ]]; then
-        echo "Waiting ${retry_delay}s before retry..."
+        log_info "Waiting ${retry_delay}s before retry..."
         sleep "$retry_delay"
         ((attempt++))
         continue
       else
-        echo "Max retries reached. Engine switch failed due to timeout." >&2
+        log_error "Max retries reached. Engine switch failed due to timeout."
         echo "$output" >&2
         return 1
       fi
     else
       # Non-timeout error, fail immediately
-      echo "Engine switch failed with non-timeout error:" >&2
+      log_error "Engine switch failed with non-timeout error:"
       echo "$output" >&2
       return 1
     fi
   done
 }
 
-# Check for root privileges
-if ((EUID != 0)); then
-  echo "This script must be run as root or with sudo."
-  exit 1
-fi
+test_engine_switching() {
+  local snap_name="$1"
+  local target_engine="$2"
 
-# Check if snap name and engine are provided
-if [ $# -lt 2 ]; then
-  echo "Error: engine and snap name are required."
-  usage
-fi
-AI_SNAP_NAME=$1
-MODEL_ENGINE=$2
+  log_section "Engine Switching Tests"
 
-SERVER_PORT=$($AI_SNAP_NAME get http.port)
+  log_info "Checking current engine status..."
+  "$snap_name" status
 
-# Base URL for API
-BASE_URL="http://localhost:$SERVER_PORT"
-TIMEOUT=5
+  log_info "Showing current engine..."
+  "$snap_name" show-engine
 
-# Check if port is listening
-if ss -tuln | grep -q ":$SERVER_PORT "; then
-  echo "Port $SERVER_PORT is listening"
-else
-  exit_error "Port $SERVER_PORT is not listening. Is the snap running?"
-fi
+  # Test engine switch with retry logic
+  log_info "Testing engine switch with retry logic..."
+  if ! use_engine_with_retry "$snap_name" "$target_engine"; then
+    exit_error "Failed to switch to engine: $target_engine"
+  fi
 
-# Check health endpoint
-test_endpoint "$BASE_URL/health" "Health check"
+  # Verify engine switch via status command
+  log_info "Verifying engine switch via status command..."
+  local curr_engine
+  curr_engine=$("$snap_name" status | head -n 1 | cut -d ' ' -f 2)
 
-# Check models endpoint
-test_endpoint "$BASE_URL/v1/models" "List available models"
+  if [[ "$curr_engine" != "$target_engine" ]]; then
+    exit_error "Current engine from status command ($curr_engine) does not match expected engine ($target_engine)."
+  fi
+  log_info "✓ Engine switch verified via status command"
 
-chat_payload='{
-        "model": "default",
-        "messages": [{"role": "user", "content": "Hello"}],
-        "max_tokens": 5
-}'
+  # Restart snap and verify persistence
+  log_info "Restarting snap to test engine persistence..."
+  snap stop "$snap_name"
+  snap start "$snap_name"
 
-if curl -s --fail-with-body \
-  --connect-timeout "$TIMEOUT" \
-  -X POST \
-  -H "Content-Type: application/json" \
-  -d "$chat_payload" \
-  "$BASE_URL/v1/chat/completions" >/dev/null; then
-  echo "✓ Chat completion: OK"
-else
-  exit_error "Chat completion failed (may indicate service issues)"
-fi
+  # Verify engine persisted in config
+  log_info "Verifying engine persisted in configuration..."
+  local config_engine
+  config_engine=$(snap get -l "$snap_name" cache | awk '/^cache.active-engine[[:space:]]/ {print $2}')
+  if [[ "$config_engine" != "$target_engine" ]]; then
+    exit_error "Engine value from config ($config_engine) does not match expected engine ($target_engine)."
+  fi
+  log_info "✓ Engine switch persisted successfully in configuration"
+}
 
-echo "Running tests against snap: $AI_SNAP_NAME"
-echo "Selected engine: $MODEL_ENGINE"
+# =============================================================================
+# MAIN EXECUTION FUNCTION
+# =============================================================================
 
-echo "Check installation..."
-snap list "$AI_SNAP_NAME"
+main() {
+  local snap_name="$1"
+  local target_engine="$2"
 
-echo "Check all configs"
-snap get "$AI_SNAP_NAME" -d
+  log_section "Starting Smoke Tests"
+  log_info "Running tests against snap: $snap_name"
+  log_info "Selected engine: $target_engine"
 
-echo "Check all configs"
-"$AI_SNAP_NAME" get
+  # Get server port
+  local server_port
+  server_port=$("$snap_name" get http.port)
+  local base_url="http://localhost:$server_port"
 
-echo "Get a config subset"
-$AI_SNAP_NAME get http
+  # Pre-flight checks
+  check_port_listening "$server_port"
 
-echo "Get specific config"
-$AI_SNAP_NAME get http.port
+  # Run all test suites
+  run_api_tests "$base_url"
+  test_snap_installation "$snap_name"
+  test_configuration_management "$snap_name"
+  test_engine_listing "$snap_name"
+  test_engine_switching "$snap_name" "$target_engine"
 
-echo "Chek current engine status"
-$AI_SNAP_NAME status
+  log_section "All Smoke Tests Completed Successfully!"
+}
 
-echo "Chek current engine"
-$AI_SNAP_NAME show-engine
+# =============================================================================
+# SCRIPT ENTRY POINT
+# =============================================================================
 
-echo "Change the config"
-$AI_SNAP_NAME set http.port=9999
+# Validation
+check_root_privileges
+validate_arguments "$@"
 
-echo "Restart the snap to apply the config change"
-snap stop "$AI_SNAP_NAME"
-snap start "$AI_SNAP_NAME"
+# Extract arguments
+AI_SNAP_NAME="$1"
+MODEL_ENGINE="$2"
 
-port=$($AI_SNAP_NAME get http.port)
-if (("$port" != 9999)); then
-  exit_error "Config change did not persist."
-fi
-
-echo "Check engines"
-
-mapfile -t avail_engines < <($AI_SNAP_NAME list-engines | tail -n +2 | awk '{print $1}' | sort)
-echo -e "Available engines:\n${avail_engines[*]}"
-
-mapfile -t src_engines < <(find "$SCRIPT_DIR/../engines" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
-echo -e "Declared engines:\n${src_engines[*]}"
-
-if [[ ${#avail_engines[@]} -ne ${#src_engines[@]} ]]; then
-  exit_error "Number of engines reported by CLI does not match number of engine directories."
-fi
-
-# The items in both arrays should perfectly match since they are sorted
-if [[ "${avail_engines[*]}" != "${src_engines[*]}" ]]; then
-  exit_error "Available engines do not match declared engines."
-fi
-
-echo "Query all engines..."
-for i in "${src_engines[@]}"; do
-  $AI_SNAP_NAME show-engine "$i"
-done
-
-# Test: Switch engine with retry logic
-echo "Testing engine switch..."
-if ! use_engine_with_retry "$MODEL_ENGINE"; then
-  exit_error "Failed to switch to engine: $MODEL_ENGINE"
-fi
-
-echo "Check on status if engine switched correctly..."
-curr_engine=$("$AI_SNAP_NAME" status | head -n 1 | cut -d ' ' -f 2)
-
-if [[ "$curr_engine" != "$MODEL_ENGINE" ]]; then
-  exit_error "Current engine from status command ($curr_engine) does not match expected engine ($MODEL_ENGINE)."
-fi
-
-echo "Restart the snap to apply the config change"
-snap stop "$AI_SNAP_NAME"
-snap start "$AI_SNAP_NAME"
-
-echo "Check on configs if engine switched correctly..."
-get_engine=$(snap get -l $AI_SNAP_NAME cache | awk '/^cache.active-engine[[:space:]]/ {print $2}')
-if [[ "$get_engine" != "$MODEL_ENGINE" ]]; then
-  exit_error "Engine value from config ($get_engine) does not match expected engine ($MODEL_ENGINE)."
-fi
+# Run main function
+main "$AI_SNAP_NAME" "$MODEL_ENGINE"
