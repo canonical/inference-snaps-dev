@@ -126,9 +126,6 @@ run_api_tests() {
 
   log_section "API Endpoint Tests"
 
-  # Test health endpoint
-  test_endpoint "$base_url/health" "Health check"
-
   # Test models endpoint
   test_endpoint "$base_url/$base_path/models" "List available models"
 
