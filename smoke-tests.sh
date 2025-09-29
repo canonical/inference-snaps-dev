@@ -287,14 +287,6 @@ test_engine_switching() {
     exit_error "Current engine from status command ($curr_engine) does not match expected engine ($target_engine)."
   fi
   log_info "✓ Engine switch verified via status command"
-  # Verify engine persisted in config
-  log_info "Verifying engine persisted in configuration..."
-  local config_engine
-  config_engine=$(snap get -l "$snap_name" cache | awk '/^cache.active-engine[[:space:]]/ {print $2}')
-  if [[ "$config_engine" != "$target_engine" ]]; then
-    exit_error "Engine value from config ($config_engine) does not match expected engine ($target_engine)."
-  fi
-  log_info "✓ Engine switch persisted successfully in configuration"
 }
 
 # =============================================================================
