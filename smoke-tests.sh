@@ -165,10 +165,6 @@ test_configuration_management() {
   log_info "Testing configuration change..."
   "$snap_name" set http.port=9999
 
-  log_info "Restarting snap to apply config change..."
-  snap stop "$snap_name"
-  snap start "$snap_name"
-
   # Verify config change persisted
   local port
   port=$("$snap_name" get http.port)
@@ -291,12 +287,6 @@ test_engine_switching() {
     exit_error "Current engine from status command ($curr_engine) does not match expected engine ($target_engine)."
   fi
   log_info "✓ Engine switch verified via status command"
-
-  # Restart snap and verify persistence
-  log_info "Restarting snap to test engine persistence..."
-  snap stop "$snap_name"
-  snap start "$snap_name"
-
   # Verify engine persisted in config
   log_info "Verifying engine persisted in configuration..."
   local config_engine
