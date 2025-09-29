@@ -239,8 +239,8 @@ use_engine_with_retry() {
       return 0
     fi
 
-    # Check if the error contains "timed out"
-    if [[ "$output" =~ "timed out" ]]; then
+    # Check if the error contains "timed out" or "change in progress"
+    if [[ "$output" =~ "timed out" || "$output" =~ "change in progress" ]]; then
       log_warning "Engine switch timed out (attempt $attempt/$max_retries)"
       echo "Error output: $output" >&2
 
@@ -260,6 +260,7 @@ use_engine_with_retry() {
       echo "$output" >&2
       return 1
     fi
+    sleep 2
   done
 }
 
