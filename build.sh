@@ -51,7 +51,7 @@ printf -v llm_pieces "%s|" "${components[@]}"
 
 echo "Generating new snapcraft.yaml"
 # TODO: generate this list dynamically
-essentials="app-scripts|engines|stack-utils|go-chat-client|common-runtime-dependencies|opencl-driver"
+essentials="app-scripts|engines|cli|go-chat-client|common-runtime-dependencies|opencl-driver"
 
 # Copy snap/snapcraft.yaml to snapcraft.yaml, retaining only the parts and components that match the regex
 yq "explode(.) |
