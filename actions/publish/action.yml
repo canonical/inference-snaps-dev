@@ -35,7 +35,7 @@ runs:
 
         if [ -n "${{ github.event.number }}" ]; then
           echo "Triggered from a PR"
-          channel="latest/edge/pr-${{ github.event.number }}"
+          channel="edge/pr-${{ github.event.number }}"
         fi
 
         echo "Uploading to channel: $channel"
