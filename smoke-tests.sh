@@ -384,13 +384,11 @@ test_engine_switching() {
   log_info "Showing current engine..."
   "$snap_name" show-engine
 
-  # Test engine switch with retry logic
   log_info "Testing engine switch with retry logic..."
   if ! use_engine_with_retry "$snap_name" "$target_engine"; then
     exit_error "Failed to switch to engine: $target_engine"
   fi
 
-  # Verify engine switch via status command
   log_info "Verifying engine switch via status command..."
   local curr_engine
   curr_engine=$("$snap_name" status | head -n 1 | cut -d ' ' -f 2)
