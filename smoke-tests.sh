@@ -3,7 +3,7 @@
 # Instrucions:
 #
 # This script runs smokes tests for a model snap installed from store.
-# It might not work for a local installation unless that all needed components installed.
+# It might not work for a local installation unless that all needed components are installed.
 
 set -Eeuo pipefail
 
