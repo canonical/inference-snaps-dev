@@ -126,8 +126,8 @@ test_chat_completion_openvino() {
 
   local system_message="You are a helpful assistant."
   local prompt="Hello!"
-  local post_json
-  post_json=$(printf '{\
+  local json_body
+  json_body=$(printf '{\
     "model":"%s",\
     "messages":[\
     {\
@@ -140,7 +140,7 @@ test_chat_completion_openvino() {
     ],"temperature":0,"max_tokens":5}' \
     "$model_name" "$system_message" "$prompt")
 
-  echo -e "Chat payload:\n$post_json"
+  echo -e "Chat payload:\n$json_body"
 
   local api_response
   api_response=$(
@@ -148,7 +148,7 @@ test_chat_completion_openvino() {
       -H "Content-Type: application/json" \
       --max-time "$TIMEOUT" \
       --retry 0 \
-      -d "$post_json" \
+      -d "$json_body" \
       --fail-with-body \
       -s \
       2>/dev/null
@@ -168,14 +168,10 @@ test_chat_completion_llamacpp() {
 
   log_info "Testing llama.cpp chat completion endpoint..."
 
-  local request
-  request=$(printf '{\
-    "model": "%s",\
-    "prompt": "Say this is a test",\
-    "temperature": 0,\
-    "max_tokens": 5}' "$model_name")
+  local json_body
+  json_body=$(printf '{"model": "%s", "prompt": "Say this is a test", "temperature": 0, "max_tokens": 5}' "$model_name")
 
-  echo -e "Chat payload:\n$request"
+  echo -e "Chat payload:\n$json_body"
 
   local api_response
   api_response=$(
@@ -183,7 +179,7 @@ test_chat_completion_llamacpp() {
       --max-time "$TIMEOUT" \
       --retry 0 \
       -H "Content-Type: application/json" \
-      -d "$request" \
+      -d "$json_body" \
       --fail-with-body \
       -s \
       2>/dev/null
