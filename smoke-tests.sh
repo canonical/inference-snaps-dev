@@ -63,6 +63,18 @@ check_root_privileges() {
   fi
 }
 
+check_for_curl() {
+  if ! command -v curl &>/dev/null; then
+    exit_error "curl is not installed. Please install curl to continue."
+  fi
+}
+
+check_for_yq() {
+  if ! command -v yq &>/dev/null; then
+    exit_error "yq is required but not installed. Please install yq v4.x and try again."
+  fi
+}
+
 validate_arguments() {
   if [ $# -lt 2 ]; then
     usage
@@ -327,6 +339,8 @@ main() {
 
 # Validation
 check_root_privileges
+check_for_curl
+check_for_yq
 validate_arguments "$@"
 
 # Extract arguments
