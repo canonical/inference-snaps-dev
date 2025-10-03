@@ -96,6 +96,14 @@ check_port_listening() {
 # HTTP API TESTING FUNCTIONS
 # =============================================================================
 
+check_exit_code() {
+  if [ "$1" -eq 0 ]; then
+    log_info "✓ Chat completion: OK"
+  else
+    exit_error "Chat completion failed (may indicate service issues)"
+  fi
+}
+
 test_endpoint() {
   local endpoint="$1"
   local description="$2"
@@ -109,40 +117,119 @@ test_endpoint() {
   fi
 }
 
+test_chat_completion_openvino() {
+  local base_url="$1"
+  local base_path="$2"
+  local model_name="$3"
+
+  log_info "Testing OpenVINO chat completion endpoint..."
+
+  local system_message="You are a helpful assistant."
+  local prompt="Hello!"
+  local post_json
+  post_json=$(printf '{\
+    "model":"%s",\
+    "messages":[\
+    {\
+      "role":"developer",\
+      "content":"%s"},\
+    {\
+      "role":"user",\
+      "content":"%s"\
+    }\
+    ],"temperature":0,"max_tokens":5}' \
+    "$model_name" "$system_message" "$prompt")
+
+  echo -e "Chat payload:\n$post_json"
+
+  local api_response
+  api_response=$(
+    curl -X POST "$base_url/$base_path/chat/completions" \
+      -H "Content-Type: application/json" \
+      --max-time "$TIMEOUT" \
+      --retry 0 \
+      -d "$post_json" \
+      --fail-with-body \
+      -s \
+      2>/dev/null
+  )
+
+  check_exit_code $?
+
+  if [ -z "$api_response" ]; then
+    exit_error "Empty response from server"
+  fi
+}
+
+test_chat_completion_llamacpp() {
+  local base_url="$1"
+  local base_path="$2"
+  local model_name="$3"
+
+  log_info "Testing llama.cpp chat completion endpoint..."
+
+  local request
+  request=$(printf '{\
+    "model": "%s",\
+    "prompt": "Say this is a test",\
+    "temperature": 0,\
+    "max_tokens": 5}' "$model_name")
+
+  echo -e "Chat payload:\n$request"
+
+  local api_response
+  api_response=$(
+    curl -X POST "$base_url/$base_path/completions" \
+      --max-time "$TIMEOUT" \
+      --retry 0 \
+      -H "Content-Type: application/json" \
+      -d "$request" \
+      --fail-with-body \
+      -s \
+      2>/dev/null
+  )
+
+  check_exit_code $?
+
+  if [ -z "$api_response" ]; then
+    exit_error "Empty response from server"
+  fi
+}
+
 test_chat_completion() {
   local base_url="$1"
+  local base_path="$2"
+  local model_name="$3"
+  local server="$4"
 
-  log_info "Testing chat completion endpoint..."
-
-  local chat_payload='{
-        "model": "default",
-        "messages": [{"role": "user", "content": "Hello"}],
-        "max_tokens": 5
-    }'
-
-  if curl -s --fail-with-body \
-    --connect-timeout "$TIMEOUT" \
-    -X POST \
-    -H "Content-Type: application/json" \
-    -d "$chat_payload" \
-    "$base_url/chat/completions" >/dev/null; then
-    log_info "✓ Chat completion: OK"
-  else
-    exit_error "Chat completion failed (may indicate service issues)"
-  fi
+  case "$server" in
+  "openvino-model-server")
+    test_chat_completion_openvino "$base_url" "$base_path" "$model_name"
+    ;;
+  "llamacpp"*)
+    test_chat_completion_llamacpp "$base_url" "$base_path" "$model_name"
+    ;;
+  *)
+    exit_error "Unknown server: $server, add a new test function to this script"
+    ;;
+  esac
 }
 
 run_api_tests() {
   local base_url="$1"
   local base_path="$2"
+  local model_name="$3"
+  local server="$4"
 
   log_section "API Endpoint Tests"
 
-  # Test models endpoint
-  test_endpoint "$base_url/$base_path/models" "List available models"
+  if [[ "$server" == "llamacpp" ]]; then
+    # Test models endpoint (ovms does not have this endpoint)
+    test_endpoint "$base_url/$base_path/models" "List available models"
+  fi
 
   # Test chat completion
-  test_chat_completion "$base_url"
+  test_chat_completion "$base_url" "$base_path" "$model_name" "$server"
 }
 
 # =============================================================================
@@ -319,12 +406,16 @@ main() {
   local base_path
   base_path=$("$snap_name" get http.base-path)
   local base_url="http://localhost:$server_port"
+  local model_name
+  model_name=$("$snap_name" get model-name 2>/dev/null || true)
+  local server
+  server=$("$snap_name" show-engine | yq .configurations.server)
 
   # Pre-flight checks
   check_port_listening "$server_port"
 
   # Run all test suites
-  run_api_tests "$base_url" "$base_path"
+  run_api_tests "$base_url" "$base_path" "$model_name" "$server"
   test_snap_installation "$snap_name"
   test_configuration_management "$snap_name"
   test_engine_listing "$snap_name"
