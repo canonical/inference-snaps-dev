@@ -12,7 +12,7 @@ set -Eeuo pipefail
 # =============================================================================
 
 # Configuration defaults
-TIMEOUT=5
+TIMEOUT=10
 DEFAULT_MAX_RETRIES=3
 DEFAULT_RETRY_DELAY=30
 
