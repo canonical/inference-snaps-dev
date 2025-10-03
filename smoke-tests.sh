@@ -384,6 +384,27 @@ test_engine_switching() {
   log_info "✓ Engine switch verified via status command"
 }
 
+test_automatic_engine_selection() {
+  local snap_name="$1"
+  log_section "Automatic engine selection test"
+
+  log_info "Running: $snap_name use-engine --auto"
+  "$snap_name" use-engine --auto
+  engine=$(sudo deepseek-r1 use-engine --auto 2>&1 | grep -oP 'Selected engine for your hardware configuration: \K\S+')
+
+  log_info "Selected engine: $engine"
+
+  snap stop "$snap_name"
+  snap start "$snap_name"
+
+  check=$("$snap_name" status 2>&1 | grep -oP 'Using \K\S+')
+
+  if [[ "$check" != "$engine" ]]; then
+    exit_error "Automatic engine selection failed: status shows $check but expected $engine"
+  fi
+
+}
+
 # =============================================================================
 # MAIN EXECUTION FUNCTION
 # =============================================================================
@@ -415,6 +436,7 @@ main() {
   test_snap_installation "$snap_name"
   test_configuration_management "$snap_name"
   test_engine_listing "$snap_name"
+  test_automatic_engine_selection "$snap_name"
   test_engine_switching "$snap_name" "$target_engine"
 
   log_section "All Smoke Tests Completed Successfully!"
