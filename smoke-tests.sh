@@ -127,18 +127,25 @@ test_chat_completion_openvino() {
   local system_message="You are a helpful assistant."
   local prompt="Hello!"
   local json_body
-  json_body=$(printf '{\
-    "model":"%s",\
-    "messages":[\
-    {\
-      "role":"developer",\
-      "content":"%s"},\
-    {\
-      "role":"user",\
-      "content":"%s"\
-    }\
-    ],"temperature":0,"max_tokens":5}' \
-    "$model_name" "$system_message" "$prompt")
+  json_body=$(
+    cat <<EOF
+{
+  "model": "$model_name",
+  "messages": [
+    {
+      "role": "developer",
+      "content": "$system_message"
+    },
+    {
+      "role": "user",
+      "content": "$prompt"
+    }
+  ],
+  "temperature": 0,
+  "max_tokens": 5
+}
+EOF
+  )
 
   echo -e "Chat payload:\n$json_body"
 
@@ -169,7 +176,17 @@ test_chat_completion_llamacpp() {
   log_info "Testing llama.cpp chat completion endpoint..."
 
   local json_body
-  json_body=$(printf '{"model": "%s", "prompt": "Say this is a test", "temperature": 0, "max_tokens": 5}' "$model_name")
+
+  json_body=$(
+    cat <<EOF
+{
+   "model":"$model_name",
+   "prompt":"Say this is a test",
+   "temperature":0,
+   "max_tokens":5
+}
+EOF
+  )
 
   echo -e "Chat payload:\n$json_body"
 
