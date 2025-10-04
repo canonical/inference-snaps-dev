@@ -13,6 +13,10 @@ inputs:
       its components to Snap Store.
     default: ''
     required: true
+  snap-track:
+    description: The snap channel's track
+    default: 'latest'
+    required: true
 
 runs:
   using: composite
@@ -35,7 +39,7 @@ runs:
 
         if [ -n "${{ github.event.number }}" ]; then
           echo "Triggered from a PR"
-          channel="edge/pr-${{ github.event.number }}"
+          channel="${{ inputs.snap-track }}/edge/pr-${{ github.event.number }}"
         fi
 
         echo "Uploading to channel: $channel"
