@@ -281,7 +281,7 @@ run_api_tests() {
 
   log_section "API Endpoint Tests"
 
-  if [[ "$server" == "llamacpp" ]]; then
+  if [[ "$server" == *llama* ]]; then
     # Test models endpoint (ovms does not have this endpoint)
     test_endpoint "$base_url/$base_path/models" "List available models"
   fi
