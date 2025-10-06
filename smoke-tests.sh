@@ -366,7 +366,7 @@ test_engine_listing() {
   log_info "Querying individual engines..."
   for engine in "${src_engines[@]}"; do
     log_info "Querying engine: $engine"
-    "$snap_name" show-engine "$engine"
+    "$snap_name" show-engine "$engine" >/dev/null
   done
 }
 
