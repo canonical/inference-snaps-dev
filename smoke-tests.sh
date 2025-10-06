@@ -48,10 +48,10 @@ trap 'error_handler ${LINENO} ${BASH_LINENO[0]} "$BASH_COMMAND" "${FUNCNAME[1]}"
 # CONFIGURATION AND GLOBALS
 # =============================================================================
 
-# Configuration defaults
-TIMEOUT=10
-DEFAULT_MAX_RETRIES=3
-DEFAULT_RETRY_DELAY=30
+# Configuration defaults (can be overridden by environment variables)
+: "${CURL_TIMEOUT:=10}"
+: "${DEFAULT_MAX_RETRIES:=3}"
+: "${DEFAULT_RETRY_DELAY:=30}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -88,6 +88,14 @@ exit_error() {
 usage() {
   echo "Usage: $0 <ai-model-snap-name> <engine>"
   echo "Runs smoke tests for one specified engine against a local AI model snap."
+  echo
+  echo "Environment variables (optional overrides):"
+  echo "  CURL_TIMEOUT         Default: 10"
+  echo "  DEFAULT_MAX_RETRIES  Default: 3"
+  echo "  DEFAULT_RETRY_DELAY  Default: 30"
+  echo
+  echo "Example:"
+  echo "CURL_TIMEOUT=40 DEFAULT_MAX_RETRIES=5 ./$(basename "$0") deepseek-r1 cpu-tiny"
 }
 
 # =============================================================================
@@ -147,7 +155,7 @@ test_endpoint() {
 
   log_info "Testing $description: $endpoint"
 
-  if curl -s --fail-with-body --connect-timeout "$TIMEOUT" "$endpoint" >/dev/null; then
+  if curl -s --fail-with-body --connect-timeout "$CURL_TIMEOUT" "$endpoint" >/dev/null; then
     log_info "✓ $description: OK"
   else
     exit_error "✗ $description: Failed (HTTP >= 400 or connection error)"
@@ -190,7 +198,7 @@ EOF
   api_response=$(
     curl -X POST "$base_url/$base_path/chat/completions" \
       -H "Content-Type: application/json" \
-      --max-time "$TIMEOUT" \
+      --max-time "$CURL_TIMEOUT" \
       --retry 0 \
       -d "$json_body" \
       --fail-with-body \
@@ -230,7 +238,7 @@ EOF
   local api_response
   api_response=$(
     curl -X POST "$base_url/$base_path/completions" \
-      --max-time "$TIMEOUT" \
+      --max-time "$CURL_TIMEOUT" \
       --retry 0 \
       -H "Content-Type: application/json" \
       -d "$json_body" \
