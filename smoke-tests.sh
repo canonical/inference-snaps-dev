@@ -296,6 +296,7 @@ test_snap_installation() {
 
 test_configuration_management() {
   local snap_name="$1"
+  local default_port
 
   log_section "Configuration Management Tests"
 
@@ -306,7 +307,7 @@ test_configuration_management() {
   "$snap_name" get
 
   log_info "Getting config subset..."
-  "$snap_name" get http
+  default_port=$("$snap_name" get http)
 
   log_info "Getting specific config..."
   "$snap_name" get http.port
@@ -321,6 +322,9 @@ test_configuration_management() {
     exit_error "Config change did not persist."
   fi
   log_info "✓ Configuration change persisted successfully"
+
+  log_info "Reverting configuration change..."
+  "$snap_name" set http.port="$default_port"
 }
 
 # =============================================================================
