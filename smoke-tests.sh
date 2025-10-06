@@ -315,7 +315,7 @@ test_configuration_management() {
   "$snap_name" get
 
   log_info "Getting config subset..."
-  default_port=$("$snap_name" get http)
+  default_port=$("$snap_name" get http.port)
 
   log_info "Getting specific config..."
   "$snap_name" get http.port
