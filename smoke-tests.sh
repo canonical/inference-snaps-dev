@@ -51,7 +51,7 @@ trap 'error_handler ${LINENO} ${BASH_LINENO[0]} "$BASH_COMMAND" "${FUNCNAME[1]}"
 # Configuration defaults (can be overridden by environment variables)
 : "${CURL_TIMEOUT:=10}"
 : "${DEFAULT_MAX_RETRIES:=5}"
-: "${DEFAULT_RETRY_DELAY:=30}"
+: "${INITIAL_RETRY_DELAY:=30}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -92,7 +92,7 @@ usage() {
   echo "Environment variables (optional overrides):"
   echo "  CURL_TIMEOUT         Default: 10"
   echo "  DEFAULT_MAX_RETRIES  Default: 5"
-  echo "  DEFAULT_RETRY_DELAY  Default: 30"
+  echo "  INITIAL_RETRY_DELAY  Default: 30"
   echo
   echo "Example:"
   echo "CURL_TIMEOUT=40 DEFAULT_MAX_RETRIES=10 ./$(basename "$0") deepseek-r1 cpu-tiny"
@@ -374,7 +374,7 @@ use_engine_with_retry() {
   local snap_name="$1"
   local engine="$2"
   local max_retries="${3:-$DEFAULT_MAX_RETRIES}"
-  local retry_delay="${4:-$DEFAULT_RETRY_DELAY}"
+  local retry_delay="${4:-$INITIAL_RETRY_DELAY}"
   local attempt=1
 
   log_info "Switching to engine: $engine"
@@ -405,6 +405,7 @@ use_engine_with_retry() {
         log_info "Waiting ${retry_delay}s before retry..."
         sleep "$retry_delay"
         ((attempt++))
+        retry_delay=$((2 * retry_delay))
         continue
       else
         log_error "Max retries reached. Engine switch failed due to timeout."
