@@ -8,6 +8,43 @@
 set -Eeuo pipefail
 
 # =============================================================================
+# ERROR HANDLING
+# =============================================================================
+
+error_handler() {
+  local exit_code=$?
+  local line_no=$1
+  local bash_lineno=$2
+  local last_command="$3"
+  local func_name="${4:-main}"
+
+  log_error "Script failed with exit code $exit_code"
+  log_error "Error occurred in function: $func_name"
+  log_error "Failed command: $last_command"
+  log_error "Line number: $line_no"
+  log_error "Bash line number: $bash_lineno"
+
+  # Print call stack
+  log_error "Call stack:"
+  local frame=0
+  while caller $frame >/dev/null 2>&1; do
+    local caller_info
+    caller_info=$(caller $frame)
+    log_error "  [$frame] $caller_info"
+    ((frame++))
+  done
+
+  exit "$exit_code"
+}
+
+# Set up trap for ERR signal
+# ${LINENO} - line number where error occurred
+# ${BASH_LINENO[0]} - line number in the calling function
+# ${BASH_COMMAND} - command that caused the error
+# ${FUNCNAME[1]} - name of the function where error occurred
+trap 'error_handler ${LINENO} ${BASH_LINENO[0]} "$BASH_COMMAND" "${FUNCNAME[1]}"' ERR
+
+# =============================================================================
 # CONFIGURATION AND GLOBALS
 # =============================================================================
 
