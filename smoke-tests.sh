@@ -50,7 +50,7 @@ trap 'error_handler ${LINENO} ${BASH_LINENO[0]} "$BASH_COMMAND" "${FUNCNAME[1]}"
 
 # Configuration defaults (can be overridden by environment variables)
 : "${CURL_TIMEOUT:=10}"
-: "${DEFAULT_MAX_RETRIES:=3}"
+: "${DEFAULT_MAX_RETRIES:=5}"
 : "${DEFAULT_RETRY_DELAY:=30}"
 
 # Colors for output
@@ -91,11 +91,11 @@ usage() {
   echo
   echo "Environment variables (optional overrides):"
   echo "  CURL_TIMEOUT         Default: 10"
-  echo "  DEFAULT_MAX_RETRIES  Default: 3"
+  echo "  DEFAULT_MAX_RETRIES  Default: 5"
   echo "  DEFAULT_RETRY_DELAY  Default: 30"
   echo
   echo "Example:"
-  echo "CURL_TIMEOUT=40 DEFAULT_MAX_RETRIES=5 ./$(basename "$0") deepseek-r1 cpu-tiny"
+  echo "CURL_TIMEOUT=40 DEFAULT_MAX_RETRIES=10 ./$(basename "$0") deepseek-r1 cpu-tiny"
 }
 
 # =============================================================================
