@@ -1,8 +1,8 @@
 # Publish snaps
 
-This is a Github Action that can be used to publish snap packages to the Snap Store.
+This Github Action publishes a snap package along with snap components to the Snap Store.
 
-Unlike [`canonical/action-publish`](https://github.com/canonical/action-publish), this action also uploads the snap components defined in `snap/snapcraft.yaml`.
+The action sets the snap channel depending on the trigger event. On pull request it sets the channel to `<track>/edge/pr-<number>`, otherwise to `<track>/edge/<short-commit-hash>`.
 
 ## Basic Usage
 
@@ -20,36 +20,28 @@ jobs:
         uses: canonical/action-build@v1
 
       - name: Publish snap
-        uses: canonical/stack-utils/.github/actions/snap-publish
+        uses: canonical/famous-models-dev/actions/publish@main
         with:
           store-credentials: ${{ secrets.STORE_LOGIN }}
 ```
 
 ## Store login
 
-This action requires a Snap Store login secret saved in Github as secret. Export a token as `secret.json` and add its content as a repository secret named `STORE_LOGIN`:
+This action requires a Snap Store login secret saved in Github as secret. Export a token as `secret.txt` and add its content as a repository secret named `STORE_LOGIN`:
 
 ```bash
 snapcraft export-login \
     --snaps "<snap-name>" \
-    --channels "latest/edge/*" \
+    --channels "*/edge/*" \
     --acls package_access,package_push,package_update,package_release \
     --expires 2026-08-15T00:00:00Z \
-    secret.json
+    secret.txt
 ```
 
-## API
 
-### Inputs
+## Inputs
 
 | Name | Description | Default | Required |
 |---|---|---|---|
-| `store-credentials` | Snap Store credentials to publish the snap. | `""` | true |
-
-## How it works
-
-**Publish step**  
-Uses a bundled `upload.sh` script to parse `snap/snapcraft.yaml` and validate snap and components to upload them all to the Snap Store using `snapcraft upload --release=<channel>`
-
-  - On branch/tag builds: channel is defined to `latest/edge/<short-sha>`  
-  - On pull request builds: channel is defined to `latest/edge/pr-<number>`
+| `store-credentials` | Snap Store credentials to publish the snap || true |
+| `snap-track` | Snap Channel track | `latest` | true |
