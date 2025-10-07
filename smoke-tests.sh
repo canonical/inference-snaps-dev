@@ -158,7 +158,6 @@ test_endpoint() {
 test_chat_completion() {
   local base_url="$1"
   local base_path="$2"
-  local model_name="$3"
 
   log_info "Testing chat completion endpoint..."
 
@@ -168,7 +167,6 @@ test_chat_completion() {
   json_body=$(
     cat <<EOF
 {
-  "model": "$model_name",
   "messages": [
     {
       "role": "developer",
@@ -214,7 +212,6 @@ EOF
 run_api_tests() {
   local base_url="$1"
   local base_path="$2"
-  local model_name="$3"
 
   log_section "API Endpoint Tests"
 
@@ -222,7 +219,7 @@ run_api_tests() {
   test_endpoint "$base_url/$base_path/models" "List available models"
 
   # Test chat completion
-  test_chat_completion "$base_url" "$base_path" "$model_name"
+  test_chat_completion "$base_url" "$base_path"
 }
 
 # =============================================================================
@@ -422,14 +419,12 @@ main() {
   local base_path
   base_path=$("$snap_name" get http.base-path)
   local base_url="http://localhost:$server_port"
-  local model_name
-  model_name=$("$snap_name" get model-name)
 
   # Pre-flight checks
   check_port_listening "$server_port"
 
   # Run all test suites
-  run_api_tests "$base_url" "$base_path" "$model_name"
+  run_api_tests "$base_url" "$base_path"
   test_snap_installation "$snap_name"
   test_configuration_management "$snap_name"
   test_engine_listing "$snap_name"
