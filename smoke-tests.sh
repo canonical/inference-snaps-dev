@@ -50,8 +50,9 @@ trap 'error_handler ${LINENO} ${BASH_LINENO[0]} "$BASH_COMMAND" "${FUNCNAME[1]}"
 
 # Configuration defaults (can be overridden by environment variables)
 : "${CURL_TIMEOUT:=10}"
-: "${DEFAULT_MAX_RETRIES:=5}"
-: "${INITIAL_RETRY_DELAY:=30}"
+# Used on engine switch operation
+: "${MAX_RETRIES:=60}"
+: "${RETRY_DELAY:=60}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -90,12 +91,12 @@ usage() {
   echo "Runs smoke tests for one specified engine against a local AI model snap."
   echo
   echo "Environment variables (optional overrides):"
-  echo "  CURL_TIMEOUT         Default: 10"
-  echo "  DEFAULT_MAX_RETRIES  Default: 5"
-  echo "  INITIAL_RETRY_DELAY  Default: 30"
+  echo "  CURL_TIMEOUT         Default: 10 (s)"
+  echo "  MAX_RETRIES          Default: 60"
+  echo "  RETRY_DELAY          Default: 60 (s)"
   echo
   echo "Example:"
-  echo "CURL_TIMEOUT=40 DEFAULT_MAX_RETRIES=10 ./$(basename "$0") deepseek-r1 cpu-tiny"
+  echo "CURL_TIMEOUT=40 MAX_RETRIES=10 ./$(basename "$0") deepseek-r1 cpu-tiny"
 }
 
 # =============================================================================
@@ -373,8 +374,8 @@ test_engine_listing() {
 use_engine_with_retry() {
   local snap_name="$1"
   local engine="$2"
-  local max_retries="${3:-$DEFAULT_MAX_RETRIES}"
-  local retry_delay="${4:-$INITIAL_RETRY_DELAY}"
+  local max_retries="${3:-$MAX_RETRIES}"
+  local retry_delay="${4:-$RETRY_DELAY}"
   local attempt=1
 
   log_info "Switching to engine: $engine"
@@ -405,7 +406,6 @@ use_engine_with_retry() {
         log_info "Waiting ${retry_delay}s before retry..."
         sleep "$retry_delay"
         ((attempt++))
-        retry_delay=$((2 * retry_delay))
         continue
       else
         log_error "Max retries reached. Engine switch failed due to timeout."
