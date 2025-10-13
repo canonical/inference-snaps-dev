@@ -20,7 +20,7 @@ jobs:
         uses: canonical/action-build@v1
 
       - name: Publish snap
-        uses: canonical/famous-models-dev/actions/publish@main
+        uses: canonical/inference-snaps-dev/actions/publish@main
         with:
           store-credentials: ${{ secrets.STORE_LOGIN }}
 ```
