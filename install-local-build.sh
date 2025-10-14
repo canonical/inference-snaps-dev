@@ -39,6 +39,9 @@ yq engines/$engine/engine.yaml > /dev/null
 # Install the snap
 sudo snap install --dangerous $snap_name_*_$architecture.snap
 
+# Stop since the service is going to fail without the connections and an engine
+sudo snap stop "$snap_name"
+
 # Connect interfaces
 sudo snap connect $snap_name:home
 sudo snap connect $snap_name:hardware-observe
@@ -52,5 +55,5 @@ done
 # Set engine
 sudo "$snap_name" use-engine "$engine" --assume-yes
 
-# Start service, which may have been stopped due to missing engine
+# Start service
 sudo snap start "$snap_name"
