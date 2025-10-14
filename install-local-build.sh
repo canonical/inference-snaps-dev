@@ -52,6 +52,5 @@ done
 # Set engine
 sudo "$snap_name" use-engine "$engine" --assume-yes
 
-
 # Start service, which may have been stopped due to missing engine
 sudo snap start "$snap_name"
