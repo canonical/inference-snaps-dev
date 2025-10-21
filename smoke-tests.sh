@@ -396,7 +396,7 @@ test_automatic_engine_selection() {
   snap stop "$snap_name"
   snap start "$snap_name"
 
-  check=$("$snap_name" status 2>&1 | grep -oP 'engine: \K\S+')
+  check=$("$snap_name" status --format=json 2>&1 | yq -p=json '.engine')
 
   if [[ "$check" != "$engine" ]]; then
     exit_error "Automatic engine selection failed: status shows $check but expected $engine"
