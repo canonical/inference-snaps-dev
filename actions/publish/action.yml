@@ -2,10 +2,9 @@ name: Publish snap
 description: >
   Publish a snap and its components to a channel in the Snap Store.
   
-  The channel is set based on the tigger:
-  - Git main branch: <track>/edge
-  - Other git branches: <track>/edge/<branch>
-  - PR: <tracklatest/edge/pr-<pr-num>
+  The channel is set based on the trigger:
+  - PR: <track>/edge/pr-<pr-num>
+  - Not a PR: <track>/edge/<branch>
 
 inputs:
   store-credentials:
