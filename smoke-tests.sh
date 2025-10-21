@@ -356,6 +356,11 @@ use_engine_with_retry() {
   done
 }
 
+get_curr_engine() {
+  local snap_name="$1"
+  echo $("$snap_name" status --format=json 2>&1 | yq -p=json '.engine')
+}
+
 test_engine_switching() {
   local snap_name="$1"
   local target_engine="$2"
@@ -375,8 +380,7 @@ test_engine_switching() {
 
   log_info "Verifying engine switch via status command..."
   local curr_engine
-  curr_engine=$("$snap_name" status | head -n 1 | cut -d ' ' -f 2)
-
+  curr_engine=$(get_curr_engine "$snap_name")
   if [[ "$curr_engine" != "$target_engine" ]]; then
     exit_error "Current engine from status command ($curr_engine) does not match expected engine ($target_engine)."
   fi
@@ -396,7 +400,7 @@ test_automatic_engine_selection() {
   snap stop "$snap_name"
   snap start "$snap_name"
 
-  check=$("$snap_name" status --format=json 2>&1 | yq -p=json '.engine')
+  check=$(get_curr_engine "$snap_name")
 
   if [[ "$check" != "$engine" ]]; then
     exit_error "Automatic engine selection failed: status shows $check but expected $engine"
