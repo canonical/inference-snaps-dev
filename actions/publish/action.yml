@@ -39,18 +39,16 @@ runs:
         # Construct the snap channel
         channel_track="${{ inputs.snap-track }}"
         channel_risk="edge"
-        channel="$channel_track/$channel_risk
 
-        # Triggered from a branch other than main
-        # TBA: use git branch in channel branch
-
-        # Triggered from a PR
-        if [ -n "${{ github.event.number }}" ]; then
+        if [ -n "${{ github.event.number }}" ]; then 
           echo "Triggered from PR: ${{ github.event.number }}"
           channel_branch="pr-${{ github.event.number }}"
-          channel+="/$channel_branch"
+        else
+          echo "Triggered from branch: ${{ github.ref_name }}"
+          channel_branch="${{ github.ref_name }}"
         fi
 
+        channel="$channel_track/$channel_risk/$channel_branch"
         echo "Using channel: $channel"
 
         "${{ github.action_path }}/upload.sh" "$channel"
