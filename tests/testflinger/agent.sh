@@ -99,7 +99,7 @@ _run snap run --shell "$SNAP_NAME" "/snap/$SNAP_NAME/current/bin/wait-for-server
 echo "::endgroup::"
 
 echo "::group::Running benchmark"
-status_json=$(_run qwen-vl status --format=json)
+status_json=$(_run $SNAP_NAME status --format=json)
 api_url=$(echo "$status_json" | jq -r '.endpoints.openai')
 echo "API URL: $api_url"
 benchmark_result=$(_run "cd llmapibenchmark/cmd && DEBUG=true go run . --base-url=$api_url --concurrency=1 --format=json")
