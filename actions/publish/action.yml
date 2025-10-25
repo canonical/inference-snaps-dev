@@ -1,8 +1,10 @@
 name: Publish snap
 description: >
   Publish a snap and its components to a channel in the Snap Store.
-  When triggered from a PR, the channel is set to `latest/edge/pr-<pr-num>`,
-  otherwise, it is set to `latest/edge/<short-git-hash>`.
+  
+  The channel is set based on the trigger:
+  - PR: <track>/edge/pr-<pr-num>
+  - Not a PR: <track>/edge/<branch>
 
 inputs:
   store-credentials:
@@ -36,15 +38,13 @@ runs:
         # Construct the snap channel
         channel_track="${{ inputs.snap-track }}"
         channel_risk="edge"
-        channel_branch="$(git rev-parse --short HEAD)"
 
-        echo "Branch name: ${{ github.ref_name }}"
-        echo "Event number: ${{ github.event.number }}"
-
-        # If triggered from a PR, use a different branch name
-        if [ -n "${{ github.event.number }}" ]; then
+        if [ -n "${{ github.event.number }}" ]; then 
           echo "Triggered from PR: ${{ github.event.number }}"
           channel_branch="pr-${{ github.event.number }}"
+        else
+          echo "Triggered from branch: ${{ github.ref_name }}"
+          channel_branch="${{ github.ref_name }}"
         fi
 
         channel="$channel_track/$channel_risk/$channel_branch"
