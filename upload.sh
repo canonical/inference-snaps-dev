@@ -1,18 +1,16 @@
 #!/bin/bash -eu
 
-function check_file() {
-    local file=$1
-    if [ ! -f "$file" ]; then
-        echo "Error: file not found: $file"
-        exit 1
-    fi
-}
-
 channel=$1
 arch=${2:-$(dpkg --print-architecture)} # if not set, take the current architecture
 
 if [[ "$(yq --version)" != *v4* ]]; then
     echo "Please install yq v4."
+    exit 1
+fi
+
+# Ensure that the working directory contains single snap and component builds
+if [ $(ls *.snap 2>/dev/null | wc -l) -gt 1 ]; then
+    echo "Error: found more than one .snap file in the current directory."
     exit 1
 fi
 
@@ -32,9 +30,7 @@ fi
 snapcraft_yaml=$(yq '. | explode(.)' "$snapcraft_file")
 
 snap_name=$(echo "$snapcraft_yaml" | yq '.name')
-snap_version=$(echo "$snapcraft_yaml" | yq '.version')
-snap_file="${snap_name}_${snap_version}_${arch}.snap"
-check_file "$snap_file"
+snap_file=$(ls ${snap_name}_*_${arch}.snap)
 snap_size=$(du -h "$snap_file" | cut -f1)
 
 echo -e "Snap file:\n\t$snap_file $snap_size"
@@ -46,9 +42,13 @@ components=$(echo "$snapcraft_yaml" | yq '.components | to_entries | .[].key')
 component_args=()
 echo "Snap components:"
 for comp_name in $components; do
-    comp_ver=$(echo "$snapcraft_yaml" | yq ".components.$comp_name.version")
-    comp_file="${snap_name}+${comp_name}_${comp_ver}.comp"
-    check_file "$comp_file"
+    # One one .comp file per component
+    if [ $(ls $snap_name+$comp_name*.comp 2>/dev/null | wc -l) -gt 1 ]; then
+        echo "Error: found more than one .comp file for $comp_name in the current directory."
+        exit 1
+    fi
+
+    comp_file="$(ls ${snap_name}+${comp_name}*.comp)"
     comp_size=$(du -h "$comp_file" | cut -f1)
     echo -e "\t$comp_file $comp_size"
 
