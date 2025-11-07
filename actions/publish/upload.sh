@@ -8,36 +8,33 @@ function check_file() {
     fi
 }
 
-channel=$1
-arch=${2:-$(dpkg --print-architecture)} # if not set, take the current architecture
-
-if [[ "$(yq --version)" != *v4* ]]; then
-    echo "Please install yq v4."
+channel=${1:-}
+if [ -z "$channel" ]; then
+    echo "Channel not set."
+    echo "Usage: $0 <channel>"
     exit 1
 fi
 
-# load snapcraft.yaml into variable, explode to evaluate aliases
-snapcraft_yaml=$(yq '. | explode(.)' snap/snapcraft.yaml)
-
-snap_name=$(echo "$snapcraft_yaml" | yq '.name')
-snap_version=$(echo "$snapcraft_yaml" | yq '.version')
-snap_file="${snap_name}_${snap_version}_${arch}.snap"
+snap_file="$(ls *.snap)"
 check_file "$snap_file"
 snap_size=$(du -h "$snap_file" | cut -f1)
-
 echo -e "Snap file:\n\t$snap_file $snap_size"
-
-# Extract components from snapcraft.yaml
-components=$(echo "$snapcraft_yaml" | yq '.components | to_entries | .[].key')
 
 # Build components argument list
 component_args=()
 echo "Snap components:"
-for comp_name in $components; do
-    comp_ver=$(echo "$snapcraft_yaml" | yq ".components.$comp_name.version")
-    comp_file="${snap_name}+${comp_name}_${comp_ver}.comp"
+for comp_file in *.comp; do
     check_file "$comp_file"
     comp_size=$(du -h "$comp_file" | cut -f1)
+
+    # Component file name patterns:
+    # <snap_name>+<comp_name>_<comp_version>.comp
+    # <snap_name>+<comp_name>.comp
+    comp_name=$(echo "$comp_file" | 
+        cut -d'+' -f2 | # drop snap name
+        cut -d'.' -f1 | # drop file extension
+        cut -d'_' -f1) # split by _, take 1st part
+
     echo -e "\t$comp_file $comp_size"
 
     component_args+=(--component "$comp_name=$comp_file")
@@ -45,4 +42,6 @@ done
 
 echo -e "Channel:\n\t$channel"
 
+echo -e "\nUploading snap..."
+set -x
 snapcraft upload "$snap_file" "${component_args[@]}" --release="$channel"
