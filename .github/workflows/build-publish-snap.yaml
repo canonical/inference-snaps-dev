@@ -10,6 +10,9 @@ on:
       publish-channel:
         required: true
         type: string
+    secrets:
+      STORE_LOGIN:
+        required: true
 
 jobs:
   build:
