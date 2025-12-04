@@ -1,0 +1,59 @@
+name: Build and publish snap
+
+on:
+  workflow_call:
+    inputs:
+      build-sha:
+        # When triggered by pull_request_target, checkout PR's HEAD (rather than base), otherwise use github.sha
+        required: true
+        type: string
+      publish-channel:
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build and publish snap
+    strategy:
+      fail-fast: false
+      matrix:
+        runs:
+          - architecture: amd64
+            runner: [ self-hosted, linux, amd64, xlarge, noble ]
+          - architecture: arm64
+            runner: [ self-hosted, linux, arm64, xlarge, noble ]
+    runs-on: ${{ matrix.runs.runner }}
+
+    steps:
+      # Update snapd as we need a recent one to support components
+      - name: Update snapd
+        run: |
+          sudo snap refresh snapd
+
+      - name: Install Git LFS
+        run: sudo apt-get update && sudo apt-get install -y git-lfs
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+          submodules: true
+          ref: ${{ inputs.build-sha }}
+
+      - name: Prepare models
+        run: |
+          # Expect a prepare-models.sh script in the repo root
+          if [ -f "prepare-models.sh" ]; then
+            ./prepare-models.sh
+          fi
+
+      - name: Build snap
+        uses: canonical/action-build@v1
+
+      # Requires STORE_LOGIN secret set. Export with:
+      # snapcraft export-login --snaps gemma3 --channels */edge/* --acls package_access,package_push,package_update,package_release --expires 2026-11-01T00:00:00Z <file>
+      - name: Publish snap
+        uses: canonical/inference-snaps-dev/actions/publish@IENG-1891-refactor-ci
+        with:
+          store-credentials: ${{ secrets.STORE_LOGIN }}
+          publish-channel: ${{ inputs.publish-channel }}
