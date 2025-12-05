@@ -58,7 +58,7 @@ jobs:
 
       # Requires the store-credentials secret set by the calling workflow
       - name: Publish snap
-        uses: canonical/inference-snaps-dev/actions/publish@IENG-1891-refactor-ci
+        uses: ./actions/publish
         with:
           store-credentials: ${{ secrets.store-credentials }}
           publish-channel: ${{ inputs.publish-channel }}
