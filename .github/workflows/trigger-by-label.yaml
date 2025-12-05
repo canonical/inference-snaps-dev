@@ -4,8 +4,8 @@ on:
   workflow_call:
 
 jobs:
-  trigger:
-    name: Trigger workflow and remove label
+  remove-label:
+    name: Remove label
     if: github.event.label.name == 'trigger-build'
     runs-on: ubuntu-latest
     permissions:
