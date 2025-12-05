@@ -1,4 +1,4 @@
-name: Trigger workflow by label
+name: Remove label
 
 on:
   workflow_call:
