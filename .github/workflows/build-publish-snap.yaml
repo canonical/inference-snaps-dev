@@ -10,6 +10,10 @@ on:
       publish-channel:
         required: true
         type: string
+      init-build-script:
+        description: If set, run this script before building the snap. It initializes the build environment, like downloading resources.
+        required: false
+        type: string
     secrets:
       store-credentials:
         required: true
@@ -43,11 +47,10 @@ jobs:
           submodules: true
           ref: ${{ inputs.build-sha }}
 
-      - name: Prepare models
+      - name: Init build environment
         run: |
-          # Expect a prepare-models.sh script in the repo root
-          if [ -f "prepare-models.sh" ]; then
-            ./prepare-models.sh
+          if [ -n "${{ inputs.init-build-script }}" ]; then
+            ./"${{ inputs.init-build-script }}"
           fi
 
       - name: Build snap
