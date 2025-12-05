@@ -1,8 +1,6 @@
 name: Publish snap
 description: >
-  Publish a snap and its components to a channel in the Snap Store.
-  When triggered from a PR, the channel is set to `latest/edge/pr-<pr-num>`,
-  otherwise, it is set to `latest/edge/<short-git-hash>`.
+  Publish a snap and its components to a specified channel in the Snap Store.
 
 inputs:
   store-credentials:
@@ -13,9 +11,9 @@ inputs:
       its components to Snap Store.
     default: ''
     required: true
-  snap-track:
-    description: The snap channel's track
-    default: 'latest'
+  publish-channel:
+    description: The channel where the snap should be published.
+    default: ''
     required: true
 
 runs:
@@ -33,21 +31,11 @@ runs:
           exit 1
         fi
 
-        # Construct the snap channel
-        channel_track="${{ inputs.snap-track }}"
-        channel_risk="edge"
-        channel_branch="$(git rev-parse --short HEAD)"
-
-        echo "Branch name: ${{ github.ref_name }}"
-        echo "Event number: ${{ github.event.number }}"
-
-        # If triggered from a PR, use a different branch name
-        if [ -n "${{ github.event.number }}" ]; then
-          echo "Triggered from PR: ${{ github.event.number }}"
-          channel_branch="pr-${{ github.event.number }}"
+        channel="${{ inputs.publish-channel }}"
+        if [ -z "$channel" ]; then
+          echo "publish-channel is not set."
+          exit 1
         fi
-
-        channel="$channel_track/$channel_risk/$channel_branch"
         echo "Using channel: $channel"
 
         "${{ github.action_path }}/upload.sh" "$channel"
