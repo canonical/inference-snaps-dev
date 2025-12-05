@@ -20,7 +20,7 @@ on:
 
 jobs:
   build:
-    name: Build and publish snap
+    name: Build & publish
     strategy:
       fail-fast: false
       matrix:
