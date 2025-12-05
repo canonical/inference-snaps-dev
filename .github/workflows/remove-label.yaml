@@ -8,14 +8,12 @@ jobs:
     name: Remove label
     if: github.event.label.name == 'trigger-build'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write # needed to comment on PR
+
     steps:
+      # Checkout the repo as the gh cli needs it for context
       - name: Checkout code
         uses: actions/checkout@v6
-        # Need to check out the repo as the gh cli needs it for context
-
+        
       - name: Remove 'trigger-build' label
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
