@@ -3,15 +3,11 @@ name: Build and publish snap
 on:
   workflow_call:
     inputs:
-      build-sha:
-        # When triggered by pull_request_target, checkout PR's HEAD (rather than base), otherwise use github.sha
-        required: true
-        type: string
       publish-channel:
         required: true
         type: string
       init-build-script:
-        description: If set, run this script before building the snap. It initializes the build environment, like downloading resources.
+        description: Script to run before building the snap
         required: false
         type: string
     secrets:
@@ -45,7 +41,6 @@ jobs:
         with:
           lfs: true
           submodules: true
-          ref: ${{ inputs.build-sha }}
 
       - name: Init build environment
         run: |
