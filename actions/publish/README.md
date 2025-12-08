@@ -32,7 +32,7 @@ This action requires a Snap Store login secret saved in Github as secret. Export
 ```bash
 snapcraft export-login \
     --snaps "<snap-name>" \
-    --channels "*/edge/*" \
+    --channels "*/edge*" \
     --acls package_access,package_push,package_update,package_release \
     --expires 2026-08-15T00:00:00Z \
     secret.txt
