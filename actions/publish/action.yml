@@ -4,16 +4,10 @@ description: >
 
 inputs:
   store-credentials:
-    description: >
-      The Snapcraft store credentials to use
-
-      This parameter is required to publish a snap and
-      its components to Snap Store.
-    default: ''
+    description: Snap Store credentials
     required: true
   publish-channel:
-    description: The channel where the snap should be published.
-    default: ''
+    description: The channel where the snap should be published
     required: true
 
 runs:
@@ -31,11 +25,6 @@ runs:
           exit 1
         fi
 
-        channel="${{ inputs.publish-channel }}"
-        if [ -z "$channel" ]; then
-          echo "publish-channel is not set."
-          exit 1
-        fi
         echo "Using channel: $channel"
 
         "${{ github.action_path }}/upload.sh" "$channel"
