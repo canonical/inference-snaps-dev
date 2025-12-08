@@ -4,14 +4,16 @@ on:
   workflow_call:
     inputs:
       publish-channel:
+        description: Snap Store channel for publishing the snap
         required: true
         type: string
       init-build-script:
-        description: If set, run this script before building the snap. It initializes the build environment, like downloading resources.
+        description: Script to run before building the snap
         required: false
         type: string
     secrets:
       store-credentials:
+        description: Snap Store credentials for publishing the snap to the specified channel
         required: true
 
 jobs:
