@@ -5,7 +5,7 @@ This project contains developer tools for building, uploading, and testing Infer
 ## Actions
 The Github Actions maintained here may be used in workflows within the snaps repos.
 
-* [publish](./actions/publish) - to publish a snap with its components
+* [publish](./.github/actions/publish) - to publish a snap with its components
 
 ## Scripts
 This project contains a few scripts to help build, install, and upload the snaps.
