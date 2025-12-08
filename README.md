@@ -2,7 +2,7 @@
 
 This project contains developer tools for building, uploading, and testing Inference Snaps.
 
-## Workflows
+## Reusable Workflows
 A few Reusable Workflows are available in the `.github/workflows` folder:
 
 - [publish-build-snap](./.github/workflows/build-publish-snap.yaml) - to build and publish a snap with its components
