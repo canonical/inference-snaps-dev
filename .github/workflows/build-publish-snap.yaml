@@ -22,12 +22,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runs:
-          - architecture: amd64
-            runner: [ self-hosted, linux, amd64, xlarge, noble ]
-          - architecture: arm64
-            runner: [ self-hosted, linux, arm64, xlarge, noble ]
-    runs-on: ${{ matrix.runs.runner }}
+        runner:
+          - [ self-hosted, linux, amd64, xlarge, noble ]
+          - [ self-hosted, linux, arm64, xlarge, noble ]
+    runs-on: ${{ matrix.runner }}
 
     steps:
       # Update snapd as we need a recent one to support components
