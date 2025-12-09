@@ -40,10 +40,10 @@ _run sudo apt-get install --yes git
 _run sudo snap install go --classic --no-wait
 echo "::endgroup::"
 
-if [[ "${INSTALL_NVIDIA_DRIVERS}" == "true" ]]; then
-  echo "::group::Installing NVIDIA drivers, CUDA and utils on device"
+if [[ -n "${INSTALL_NVIDIA_DRIVER_VERSION}" ]]; then
+  echo "::group::Installing NVIDIA driver $INSTALL_NVIDIA_DRIVER_VERSION"
   _run sudo apt-get update
-  _run sudo apt-get install -y nvidia-driver-$NVIDIA_DRIVERS_VERSION
+  _run sudo apt-get install -y nvidia-driver-$INSTALL_NVIDIA_DRIVER_VERSION
 
   # Reboot the device to load NVIDIA drivers
   # In background to avoid breaking the SSH connection prematurely
