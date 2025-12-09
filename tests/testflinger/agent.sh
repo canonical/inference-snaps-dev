@@ -103,7 +103,7 @@ until _run bash -c 'echo "hi" | '"$SNAP_NAME"' chat --verbose'; do
   retry_count=$((retry_count + 1))
   if [ $retry_count -ge $max_retries ]; then
     echo "Get logs"
-    _run sudo snap logs "$SNAP_NAME" -n 200
+    _run sudo snap logs "$SNAP_NAME" -n 300
     echo "::error::Machine: $dut_hostname, chat failed to respond after $((max_retries * 30)) seconds"
     exit 1
   fi
