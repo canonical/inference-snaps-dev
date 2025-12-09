@@ -78,6 +78,7 @@ if [[ -n "${SELECT_ENGINE}" ]]; then
   _run sudo "$SNAP_NAME" use-engine "$SELECT_ENGINE"
   wait_for_snap_changes
 
+  # Set expected engine to the selected one
   EXPECTED_ENGINE=$SELECT_ENGINE
   echo "::endgroup::"
 fi
@@ -92,14 +93,30 @@ if [ "$EXPECTED_ENGINE" != "$selected_engine" ]; then
 fi
 echo "::endgroup::"
 
-echo "::group::Start server and clone benchmark"
-# Start the server. While we wait, clone the benchmark tools. Then check if server has started.
-_run sudo snap start "$SNAP_NAME".server
-_run "git clone --depth 1 --branch v1.0.5 https://github.com/Yoosu-L/llmapibenchmark.git"
-_run snap run --shell "$SNAP_NAME" "/snap/$SNAP_NAME/current/bin/wait-for-server.sh"
+echo "::group::Wait and chat"
+# _run sudo snap start "$SNAP_NAME".server
+
+echo "Get logs"
+_run sudo snap logs "$SNAP_NAME" -n 100
+
+echo "Waiting for chat to respond"
+max_retries=20
+retry_count=0
+retry_delay=30
+until _run bash -c 'echo "hi" | '"$SNAP_NAME"' chat --verbose'; do
+  retry_count=$((retry_count + 1))
+  if [ $retry_count -ge $max_retries ]; then
+    echo "::error::Machine: $dut_hostname, chat failed to respond after $((max_retries * 30)) seconds"
+    exit 1
+  fi
+  echo "✘ Chat failed, retrying in ${retry_delay}s... ($retry_count/$max_retries)"
+  sleep $retry_delay
+done
+echo "✔ Chat responded"
 echo "::endgroup::"
 
 echo "::group::Running benchmark"
+_run "git clone --depth 1 --branch v1.0.5 https://github.com/Yoosu-L/llmapibenchmark.git"
 status_json=$(_run $SNAP_NAME status --format=json)
 api_url=$(echo "$status_json" | jq -r '.endpoints.openai')
 echo "API URL: $api_url"
