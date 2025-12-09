@@ -2,23 +2,25 @@ name: Remove label
 
 on:
   workflow_call:
+    inputs:
+      label:
+        description: The name of the label that gets removed
+        required: true
+        type: string
 
 jobs:
   remove-label:
     name: Remove label
-    if: github.event.label.name == 'trigger-build'
+    if: github.event.label.name == inputs.label
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write # needed to comment on PR
     steps:
+      # Checkout the repo as the gh cli needs it for context
       - name: Checkout code
         uses: actions/checkout@v6
-        # Need to check out the repo as the gh cli needs it for context
 
-      - name: Remove 'trigger-build' label
+      - name: Remove label
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
-          gh pr edit $PR_NUMBER --remove-label "trigger-build"
+          gh pr edit $PR_NUMBER --remove-label "${{ inputs.label }}"

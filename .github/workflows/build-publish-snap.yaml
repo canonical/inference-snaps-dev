@@ -3,19 +3,17 @@ name: Build and publish snap
 on:
   workflow_call:
     inputs:
-      build-sha:
-        # When triggered by pull_request_target, checkout PR's HEAD (rather than base), otherwise use github.sha
-        required: true
-        type: string
       publish-channel:
+        description: Snap Store channel for publishing the snap
         required: true
         type: string
       init-build-script:
-        description: If set, run this script before building the snap. It initializes the build environment, like downloading resources.
+        description: Script to run before building the snap
         required: false
         type: string
     secrets:
       store-credentials:
+        description: Snap Store credentials for publishing the snap to the specified channel
         required: true
 
 jobs:
@@ -24,12 +22,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runs:
-          - architecture: amd64
-            runner: [ self-hosted, linux, amd64, xlarge, noble ]
-          - architecture: arm64
-            runner: [ self-hosted, linux, arm64, xlarge, noble ]
-    runs-on: ${{ matrix.runs.runner }}
+        runner:
+          - [ self-hosted, linux, amd64, xlarge, noble ]
+          - [ self-hosted, linux, arm64, xlarge, noble ]
+    runs-on: ${{ matrix.runner }}
 
     steps:
       # Update snapd as we need a recent one to support components
@@ -45,7 +41,6 @@ jobs:
         with:
           lfs: true
           submodules: true
-          ref: ${{ inputs.build-sha }}
 
       - name: Init build environment
         run: |
