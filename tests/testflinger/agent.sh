@@ -77,6 +77,8 @@ if [[ -n "${SELECT_ENGINE}" ]]; then
   wait_for_snap_changes
   _run sudo "$SNAP_NAME" use-engine "$SELECT_ENGINE"
   wait_for_snap_changes
+
+  EXPECTED_ENGINE=$SELECT_ENGINE
   echo "::endgroup::"
 fi
 
