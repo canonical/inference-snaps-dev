@@ -43,7 +43,7 @@ echo "::endgroup::"
 if [[ "${INSTALL_NVIDIA_DRIVERS}" == "true" ]]; then
   echo "::group::Installing NVIDIA drivers, CUDA and utils on device"
   _run sudo apt-get update
-  _run sudo apt-get install -y nvidia-driver-$NVIDIA_DRIVERS_VERSION nvidia-cuda-toolkit
+  _run sudo apt-get install -y nvidia-driver-$NVIDIA_DRIVERS_VERSION
 
   # Reboot the device to load NVIDIA drivers
   # In background to avoid breaking the SSH connection prematurely
