@@ -95,19 +95,15 @@ if [ "$EXPECTED_ENGINE" != "$selected_engine" ]; then
 fi
 echo "::endgroup::"
 
-echo "::group::Wait and chat"
-# _run sudo snap start "$SNAP_NAME".server
-
-echo "Get logs"
-_run sudo snap logs "$SNAP_NAME" -n 100
-
-echo "Waiting for chat to respond"
+echo "::group::Waiting to chat"
 max_retries=20
 retry_count=0
 retry_delay=30
 until _run bash -c 'echo "hi" | '"$SNAP_NAME"' chat --verbose'; do
   retry_count=$((retry_count + 1))
   if [ $retry_count -ge $max_retries ]; then
+    echo "Get logs"
+    _run sudo snap logs "$SNAP_NAME" -n 200
     echo "::error::Machine: $dut_hostname, chat failed to respond after $((max_retries * 30)) seconds"
     exit 1
   fi
