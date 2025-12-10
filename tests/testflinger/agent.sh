@@ -40,10 +40,10 @@ _run sudo apt-get install --yes git
 _run sudo snap install go --classic --no-wait
 echo "::endgroup::"
 
-if [[ "${INSTALL_NVIDIA_DRIVERS}" == "true" ]]; then
-  echo "::group::Installing NVIDIA drivers, CUDA and utils on device"
+if [[ -n "${INSTALL_NVIDIA_DRIVER_VERSION}" ]]; then
+  echo "::group::Installing NVIDIA driver $INSTALL_NVIDIA_DRIVER_VERSION"
   _run sudo apt-get update
-  _run sudo apt-get install -y nvidia-driver-$NVIDIA_DRIVERS_VERSION nvidia-cuda-toolkit
+  _run sudo apt-get install -y nvidia-driver-$INSTALL_NVIDIA_DRIVER_VERSION
 
   # Reboot the device to load NVIDIA drivers
   # In background to avoid breaking the SSH connection prematurely
@@ -59,9 +59,15 @@ if [[ "${INSTALL_NVIDIA_DRIVERS}" == "true" ]]; then
 fi
 
 echo "::group::Installing snap"
+
+# Testflinger has a timeout checking for any output on stdout and stderr.
+# The no-wait is to work around this, preventing the snap install step from causing a timeout on a slow internet
+# connection. The no-wait, along with wait_for_snap_changes creates output to stdout, which prevents this timeout.
+
 echo "Remove $SNAP_NAME if already installed"
 _run sudo snap remove "$SNAP_NAME" --no-wait
 wait_for_snap_changes
+
 echo "Installing $SNAP_NAME from $SNAP_CHANNEL"
 _run sudo snap install "$SNAP_NAME" --channel "$SNAP_CHANNEL" --no-wait
 wait_for_snap_changes
@@ -78,6 +84,9 @@ if [[ -n "${SELECT_ENGINE}" ]]; then
   wait_for_snap_changes
   _run sudo "$SNAP_NAME" use-engine "$SELECT_ENGINE"
   wait_for_snap_changes
+
+  # Set expected engine to the selected one
+  EXPECTED_ENGINE=$SELECT_ENGINE
   echo "::endgroup::"
 fi
 
@@ -91,14 +100,26 @@ if [ "$EXPECTED_ENGINE" != "$selected_engine" ]; then
 fi
 echo "::endgroup::"
 
-echo "::group::Start server and clone benchmark"
-# Start the server. While we wait, clone the benchmark tools. Then check if server has started.
-_run sudo snap start "$SNAP_NAME".server
-_run "git clone --depth 1 --branch v1.0.5 https://github.com/Yoosu-L/llmapibenchmark.git"
-_run snap run --shell "$SNAP_NAME" "/snap/$SNAP_NAME/current/bin/wait-for-server.sh"
+echo "::group::Waiting to chat"
+max_retries=20
+retry_count=0
+retry_delay=30
+until _run bash -c 'echo "hi" | '"$SNAP_NAME"' chat --verbose'; do
+  retry_count=$((retry_count + 1))
+  if [ $retry_count -ge $max_retries ]; then
+    echo "Get logs"
+    _run sudo snap logs "$SNAP_NAME" -n 300
+    echo "::error::Machine: $dut_hostname, chat failed to respond after $((max_retries * 30)) seconds"
+    exit 1
+  fi
+  echo "✘ Chat failed, retrying in ${retry_delay}s... ($retry_count/$max_retries)"
+  sleep $retry_delay
+done
+echo "✔ Chat responded"
 echo "::endgroup::"
 
 echo "::group::Running benchmark"
+_run "git clone --depth 1 --branch v1.0.5 https://github.com/Yoosu-L/llmapibenchmark.git"
 status_json=$(_run $SNAP_NAME status --format=json)
 api_url=$(echo "$status_json" | jq -r '.endpoints.openai')
 echo "API URL: $api_url"
