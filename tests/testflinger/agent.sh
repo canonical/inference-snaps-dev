@@ -60,11 +60,11 @@ fi
 
 echo "::group::Installing snap"
 echo "Remove $SNAP_NAME if already installed"
-_run sudo snap remove "$SNAP_NAME"
+_run sudo snap remove "$SNAP_NAME" --no-wait
 wait_for_snap_changes
 
 echo "Installing $SNAP_NAME from $SNAP_CHANNEL"
-_run sudo snap install "$SNAP_NAME" --channel "$SNAP_CHANNEL"
+_run sudo snap install "$SNAP_NAME" --channel "$SNAP_CHANNEL" --no-wait
 wait_for_snap_changes
 echo "::endgroup::"
 
