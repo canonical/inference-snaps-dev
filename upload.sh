@@ -1,56 +1,45 @@
 #!/bin/bash -eu
 
-function check_file() {
-    local file=$1
-    if [ ! -f "$file" ]; then
-        echo "Error: file not found: $file"
-        exit 1
-    fi
-}
+git_branch=$(git rev-parse --abbrev-ref HEAD)
+default_channel="latest/edge/$git_branch"
 
-channel=$1
-arch=${2:-$(dpkg --print-architecture)} # if not set, take the current architecture
+channel=${1-$default_channel}
 
-if [[ "$(yq --version)" != *v4* ]]; then
-    echo "Please install yq v4."
+snap_file="$(ls *.snap)"
+
+if [ "$(echo "$snap_file" | wc -l)" -ne 1 ]; then
+    echo -e "Error: expected 1 snap file, found multiple: \n$snap_file"
     exit 1
 fi
 
-# validate channel
-if [[ ! "$channel" =~ ^[a-z0-9-]+/[a-z0-9-]+(/[a-z0-9-]+)?$ ]]; then
-    echo "Invalid Snap channel: $channel"
-    exit 1
-fi
-
-snapcraft_file="snap/snapcraft.yaml"
-if [ -f "snapcraft.yaml" ]; then
-    echo -e "Warning: Using top level snapcraft.yaml file!\n"
-    snapcraft_file="snapcraft.yaml"
-fi
-
-# load snapcraft.yaml into variable, explode to evaluate aliases
-snapcraft_yaml=$(yq '. | explode(.)' "$snapcraft_file")
-
-snap_name=$(echo "$snapcraft_yaml" | yq '.name')
-snap_version=$(echo "$snapcraft_yaml" | yq '.version')
-snap_file="${snap_name}_${snap_version}_${arch}.snap"
-check_file "$snap_file"
 snap_size=$(du -h "$snap_file" | cut -f1)
-
 echo -e "Snap file:\n\t$snap_file $snap_size"
-
-# Extract components from snapcraft.yaml
-components=$(echo "$snapcraft_yaml" | yq '.components | to_entries | .[].key')
 
 # Build components argument list
 component_args=()
+component_list=()
 echo "Snap components:"
-for comp_name in $components; do
-    comp_ver=$(echo "$snapcraft_yaml" | yq ".components.$comp_name.version")
-    comp_file="${snap_name}+${comp_name}_${comp_ver}.comp"
-    check_file "$comp_file"
+for comp_file in *.comp; do
     comp_size=$(du -h "$comp_file" | cut -f1)
+
+    # Component file name patterns:
+    # <snap_name>+<comp_name>_<comp_version>.comp
+    # <snap_name>+<comp_name>.comp
+    comp_name=$(echo "$comp_file" | 
+        cut -d'+' -f2 | # drop snap name
+        cut -d'.' -f1 | # drop file extension
+        cut -d'_' -f1) # split by _, take 1st part
+
     echo -e "\t$comp_file $comp_size"
+    
+    # Check for duplicate components
+    for existing_comp in "${component_list[@]}"; do
+        if [[ "$existing_comp" == "$comp_name" ]]; then
+            echo "Error: more than one component is named '$comp_name'"
+            exit 1
+        fi
+    done
+    component_list+=("$comp_name")
 
     component_args+=(--component "$comp_name=$comp_file")
 done
@@ -59,6 +48,9 @@ echo -e "Channel:\n\t$channel"
 
 echo -ne "\nType Y to start the upload: "
 read confirmation
-if [[ "$confirmation" == "y" || "$confirmation" == "Y" ]]; then
-    snapcraft upload "$snap_file" "${component_args[@]}" --release="$channel"
+if [[ "$confirmation" != "y" && "$confirmation" != "Y" ]]; then
+    exit 1
 fi
+
+set -x
+snapcraft upload "$snap_file" "${component_args[@]}" --release="$channel"
