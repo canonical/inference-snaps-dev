@@ -46,7 +46,7 @@ done
 
 echo -e "Channel:\n\t$channel"
 
-echo -ne "\nType Y to start the upload: "
+echo -ne "\nUpload and release? [y/N] "
 read confirmation
 if [[ "$confirmation" != "y" && "$confirmation" != "Y" ]]; then
     exit 1
