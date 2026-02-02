@@ -23,8 +23,8 @@ jobs:
       fail-fast: false
       matrix:
         runner:
-          - [ self-hosted, linux, amd64, xlarge, noble ]
-          - [ self-hosted, linux, arm64, xlarge, noble ]
+          - self-hosted-linux-amd64-noble-xlarge
+          - self-hosted-linux-arm64-noble-large-extra
     runs-on: ${{ matrix.runner }}
 
     steps:
