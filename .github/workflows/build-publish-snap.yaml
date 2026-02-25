@@ -3,6 +3,11 @@ name: Build and publish snap
 on:
   workflow_call:
     inputs:
+      runner:
+        description: The type of machine to run the job on
+        required: true
+        type: string
+        default: '[ self-hosted, linux, amd64, xlarge, noble ]'
       publish-channel:
         description: Snap Store channel for publishing the snap
         required: true
@@ -19,13 +24,7 @@ on:
 jobs:
   build:
     name: Build & publish
-    strategy:
-      fail-fast: false
-      matrix:
-        runner:
-          - [ self-hosted, linux, amd64, xlarge, noble ]
-          - [ self-hosted, linux, arm64, xlarge, noble ]
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ fromJSON(inputs.runner) }}
 
     steps:
       # Update snapd as we need a recent one to support components
