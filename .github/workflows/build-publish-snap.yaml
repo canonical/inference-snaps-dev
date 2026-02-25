@@ -4,10 +4,13 @@ on:
   workflow_call:
     inputs:
       runner:
-        description: The type of machine to run the job on
+        description: |
+          The type of machine to run the job on.
+          The input should be a JSON string or array. For example:
+          - '"ubuntu-latest"' for a single label
+          - '[ "self-hosted", "amd64", "large" ]' for multiple labels
         required: true
         type: string
-        default: '[ "self-hosted", "amd64", "xlarge" ]'
       publish-channel:
         description: Snap Store channel for publishing the snap
         required: true
