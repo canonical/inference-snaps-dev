@@ -66,6 +66,9 @@ jobs:
           component_args=()
           echo "Snap components:"
           for comp_file in *.comp; do
+              # When no .comp files exist, bash leaves the glob pattern unexpanded (*.comp). Check if $comp_file exists.
+              [ -f "$comp_file" ] || continue
+
               comp_size=$(du -h "$comp_file" | cut -f1)
 
               # Component file name patterns:
