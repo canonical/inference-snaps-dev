@@ -3,6 +3,17 @@ name: Build and publish snap
 on:
   workflow_call:
     inputs:
+      runner:
+        description: |
+          The type of machine to run the job on.
+          
+          The input should be a JSON string or array. For example:
+          - '"ubuntu-latest"' for a single label
+          - '[ "self-hosted", "amd64", "large" ]' for multiple labels
+
+          Note: Using GH-hosted runners is currently not possible; see https://github.com/canonical/inference-snaps-dev/issues/40
+        type: string
+        default: '[ "self-hosted", "amd64", "xlarge", "noble" ]'
       publish-channel:
         description: Snap Store channel for publishing the snap
         required: true
@@ -19,13 +30,7 @@ on:
 jobs:
   build:
     name: Build & publish
-    strategy:
-      fail-fast: false
-      matrix:
-        runner:
-          - [ self-hosted, linux, amd64, xlarge, noble ]
-          - [ self-hosted, linux, arm64, xlarge, noble ]
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ fromJSON(inputs.runner) }}
 
     steps:
       # Update snapd as we need a recent one to support components
