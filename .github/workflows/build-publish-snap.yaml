@@ -12,7 +12,6 @@ on:
           - '[ "self-hosted", "amd64", "large" ]' for multiple labels
 
           Note: Using GH-hosted runners is currently not possible; see https://github.com/canonical/inference-snaps-dev/issues/40
-        required: true
         type: string
         default: '[ "self-hosted", "amd64", "xlarge", "noble" ]'
       publish-channel:
