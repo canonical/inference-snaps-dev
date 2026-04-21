@@ -83,14 +83,10 @@ echo "➤ Stop failing services..."
 # Stop since the service is going to fail without an engine
 sudo snap stop "$snap_name"
 
-echo "➤ Connect interfaces..."
+echo "➤ Connecting interfaces [home, hardware-observe, process-control]..."
 sudo snap connect $snap_name:home
 sudo snap connect $snap_name:hardware-observe
-
-process_control_slot=$(sudo snap connections "$snap_name" | awk -v plug="$snap_name:process-control" '$1 == plug { print $3; exit }')
-if [[ -n "$process_control_slot" && "$process_control_slot" != "-" ]]; then
-    sudo snap connect "$snap_name:process-control" "$process_control_slot"
-fi
+sudo snap connect $snap_name:process-control || true # process-control is not available on all snaps
 
 if [[ -n "$engine" ]]; then
     echo "➤ Setting engine to $engine..."
