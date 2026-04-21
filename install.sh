@@ -71,7 +71,7 @@ fi
 
 if [[ "$clean" == true ]]; then
     echo "➤ Removing existing snap installation..."
-    sudo snap remove "$snap_name"
+    sudo snap remove "$snap_name" --purge
 fi
 
 
