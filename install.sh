@@ -91,6 +91,9 @@ sudo snap connect $snap_name:process-control || true # process-control is not av
 if [[ -n "$engine" ]]; then
     echo "➤ Setting engine to $engine..."
     sudo "$snap_name" use-engine "$engine" --assume-yes
+else
+    echo "➤ No engine specified, autoselecting one..."
+    sudo "$snap_name" use-engine --auto --assume-yes
 fi
 
 echo "➤ Starting services..."
