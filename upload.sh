@@ -36,7 +36,13 @@ for comp_file in *.comp; do
     total_size=$((total_size + comp_size))
 
     comp_size_human=$(numfmt --to=iec "$comp_size")
-    echo -e "\t$comp_file $comp_size_human"
+    
+    # Color component size red if less than 100KB
+    if [[ $comp_size -lt 100000 ]]; then
+        echo -e "\t$comp_file \033[31m$comp_size_human\033[0m"
+    else
+        echo -e "\t$comp_file $comp_size_human"
+    fi
     
     # Check for duplicate components
     for existing_comp in "${component_list[@]}"; do
