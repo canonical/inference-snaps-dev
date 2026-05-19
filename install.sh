@@ -92,8 +92,11 @@ if [[ -n "$engine" ]]; then
     echo "➤ Setting engine to $engine..."
     sudo "$snap_name" use-engine "$engine" --assume-yes
 else
-    echo "➤ No engine specified, autoselecting one..."
-    sudo "$snap_name" use-engine --auto --assume-yes
+    # Use "show-engine"'s exit code to check if an engine is already selected
+    if ! "$snap_name" show-engine > /dev/null 2>&1; then
+        echo "➤ No engine specified, autoselecting one..."
+        sudo "$snap_name" use-engine --auto --assume-yes
+    fi
 fi
 
 echo "➤ Starting services..."
