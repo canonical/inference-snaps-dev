@@ -88,14 +88,22 @@ sudo snap connect $snap_name:home
 sudo snap connect $snap_name:hardware-observe
 sudo snap connect $snap_name:process-control || true # process-control is not available on all snaps
 
+# Select engine if specified, otherwise autoselect one if none is selected yet
 if [[ -n "$engine" ]]; then
     echo "➤ Setting engine to $engine..."
     sudo "$snap_name" use-engine "$engine" --assume-yes
 else
-    # Use "show-engine"'s exit code to check if an engine is already selected
-    if ! "$snap_name" show-engine > /dev/null 2>&1; then
-        echo "➤ No engine specified, autoselecting one..."
-        sudo "$snap_name" use-engine --auto --assume-yes
+    # Use "status" to check if an engine is already selected
+    status_exit_code=0
+    status_output=$("$snap_name" status 2>&1) || status_exit_code=$?
+
+    if [ $status_exit_code -ne 0 ]; then
+        # Status failed, let's check if it failed because no engine is selected or for some other reason
+        if [[ "$status_output" == *"no active engine"* ]]; then
+            # No engine was selected, autoselect one
+            echo "➤ No engine specified, autoselecting one..."
+            sudo "$snap_name" use-engine --auto --assume-yes
+        fi
     fi
 fi
 
