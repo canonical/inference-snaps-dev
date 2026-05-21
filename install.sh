@@ -91,7 +91,7 @@ sudo snap connect $snap_name:process-control || true # process-control is not av
 # Select engine if specified, otherwise autoselect one if none is selected yet
 if [[ -n "$engine" ]]; then
     echo "➤ Setting engine to $engine..."
-    sudo "$snap_name" use-engine "$engine" --assume-yes
+    sudo "$snap_name" use-engine "$engine" --no-restart
 else
     # Use "status" to check if an engine is already selected
     status_exit_code=0
@@ -102,7 +102,7 @@ else
         if [[ "$status_output" == *"no active engine"* ]]; then
             # No engine was selected, autoselect one
             echo "➤ No engine specified, autoselecting one..."
-            sudo "$snap_name" use-engine --auto --assume-yes
+            sudo "$snap_name" use-engine --auto --no-restart
         fi
     fi
 fi
