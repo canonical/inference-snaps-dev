@@ -103,6 +103,10 @@ else
             # No engine was selected, autoselect one
             echo "➤ No engine specified, autoselecting one..."
             sudo "$snap_name" use-engine --auto --no-restart
+        else
+            # Status failed for some other reason, print the error and exit
+            echo "Engine selection error: unexpected message from '$snap_name status': $status_output"
+            exit 1
         fi
     fi
 fi
