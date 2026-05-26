@@ -110,7 +110,7 @@ add_branch_rules() {
         {
             "actor_id": 5,
             "actor_type": "RepositoryRole",
-            "bypass_mode": "always"
+            "bypass_mode": "pull_request"
         }
     ],
     "conditions": {
@@ -134,11 +134,15 @@ add_branch_rules() {
         {
             "type": "pull_request",
             "parameters": {
-                "dismiss_stale_reviews_on_push": true,
+                "required_approving_review_count": 1,
+                "dismiss_stale_reviews_on_push": false,
+                "required_reviewers": [],
                 "require_code_owner_review": false,
                 "require_last_push_approval": false,
-                "required_approving_review_count": 1,
-                "required_review_thread_resolution": true
+                "required_review_thread_resolution": false,
+                "allowed_merge_methods": [
+                    "squash"
+                ]
             }
         },
         {
