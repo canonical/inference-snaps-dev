@@ -48,14 +48,6 @@ ask_yes_no() {
 }
 
 create_repo() {
-#   - Create repository (public or private, as desired)
-#   - Disable Wiki, Issues and Projects
-#   - Disallow merge commits and rebase merges, but allow squash merges
-#   - Enable "Always suggest updating pull request branches "
-#   - Enable "Allow auto-merge"
-#   - Enable "Automatically delete head branches"
-#   - Enable main branch protection rules (require pull request reviews before merging, require status checks to pass before merging, require branches to be up to date before merging)
-
     local visibility_flag="--public"
     if [[ "$private" == true ]]; then
         visibility_flag="--private"
@@ -64,7 +56,7 @@ create_repo() {
     echo "Creating repository ${REPOSITORY_OWNER}/${repo_name}..."
     gh_cmd repo create "${REPOSITORY_OWNER}/${repo_name}" "$visibility_flag"
 
-    # Apply repository-level settings after creation.
+    echo "Applying repository-level settings after creation..."
     gh_api_json PATCH "/repos/${REPOSITORY_OWNER}/${repo_name}" "$(cat <<EOF
 {
     "has_wiki": false,
@@ -82,7 +74,7 @@ EOF
 }
 
 add_team_permissions() {
-    #  - Add REPOSITORY_OWNER/TEAM_NAME (e.g. "@canonical/industrial") team with direct access (admin permissions)
+    # Add REPOSITORY_OWNER/TEAM_NAME (e.g. "@canonical/industrial") team with direct access (admin permissions)
     echo "Granting team permissions to @${REPOSITORY_OWNER}/${TEAM_NAME}..."
     gh_api_json PUT "/orgs/${REPOSITORY_OWNER}/teams/${TEAM_NAME}/repos/${REPOSITORY_OWNER}/${repo_name}" "$(cat <<EOF
 {
@@ -93,14 +85,8 @@ EOF
 }
 
 add_branch_rules() {
-#   - Create ruleset for main branch:
-#       - Bypass list: Repository Admin
-#       - Target branch: default (main)
-#       - Only restrict deletions
-#       - Require signed commits
-#       - Require a pull request before merging
-#       - Block force pushes
     echo "Creating branch ruleset for the default branch..."
+
     gh_api_json POST "/repos/${REPOSITORY_OWNER}/${repo_name}/rulesets" "$(cat <<EOF
 {
     "name": "main-branch-protection",
@@ -152,9 +138,7 @@ EOF
 }
 
 add_website_and_description() {
-#   - Add description: "Local inference with ${model_name}"
-#   - Add website: "https://snapcraft.io/${snap_name}"
-#   - Add Topic: "inference-snap"
+    # Add description and website
     echo "Setting repository description, website, and topic..."
     gh_api_json PATCH "/repos/${REPOSITORY_OWNER}/${repo_name}" "$(cat <<EOF
 {
@@ -164,6 +148,7 @@ add_website_and_description() {
 EOF
 )"
 
+    # Add topic
     gh_api_json PUT "/repos/${REPOSITORY_OWNER}/${repo_name}/topics" "$(cat <<EOF
 {
     "names": [
@@ -175,11 +160,10 @@ EOF
 }
 
 add_workflow_trigger_labels() {
-#   - Add label "trigger-build" with description "Trigger build pipeline and publish snap"
-#   - Add label "trigger-tests" with description "Trigger test pipeline on last build, if not present triggers also build"
     echo "Creating workflow trigger labels..."
-    gh_cmd label create trigger-build --repo "${REPOSITORY_OWNER}/${repo_name}" --color 78af54 --description "Trigger build pipeline and publish snap" --force
-    gh_cmd label create trigger-tests --repo "${REPOSITORY_OWNER}/${repo_name}" --color 9a1f77 --description "Trigger test pipeline on last build, if not present triggers also build" --force
+
+    gh_cmd label create trigger-build --repo "${REPOSITORY_OWNER}/${repo_name}" --color 78AF54 --description "Trigger build pipeline and publish snap" --force
+    gh_cmd label create trigger-tests --repo "${REPOSITORY_OWNER}/${repo_name}" --color 9A1F77 --description "Trigger test pipeline on last build, if not present triggers also build" --force
 }
 
 print_help() {
