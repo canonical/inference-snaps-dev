@@ -15,6 +15,7 @@ repo_name=""
 visibility=""
 dry_run=false
 assume_yes=false
+debug=false
 
 print_cmd() {
     printf "+ "
@@ -39,7 +40,12 @@ gh_api_json() {
         print_cmd "$CLI_TOOL" api --method "$method" "$endpoint" --input -
         printf "%s\n" "$payload"
     else
-        printf "%s\n" "$payload" | "$CLI_TOOL" api --method "$method" "$endpoint" --input -
+        if [[ "$debug" == true ]]; then
+            printf "%s\n" "$payload" | "$CLI_TOOL" api --method "$method" "$endpoint" --input -
+        else
+            # Response body is not needed; suppress it to avoid pager/full-screen output.
+            printf "%s\n" "$payload" | "$CLI_TOOL" api --method "$method" "$endpoint" --input - >/dev/null
+        fi
     fi
 }
 
@@ -74,6 +80,7 @@ Required arguments:
 Optional arguments:
   --repo <repo_name>        Repository name. Defaults to <snap_name>-snap.
   --assume-yes              Skip confirmation prompts.
+  --debug                   Show full GitHub API responses.
   --dry-run                 Print GitHub commands without executing them.
   --help                    Show this help message and exit.
 
@@ -124,6 +131,10 @@ parse_args() {
                 ;;
             --assume-yes)
                 assume_yes=true
+                shift
+                ;;
+            --debug)
+                debug=true
                 shift
                 ;;
             --dry-run)
