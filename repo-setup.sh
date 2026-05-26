@@ -3,10 +3,10 @@
 set -euo pipefail
 
 # Configuration variables
-REPOSITORY_OWNER="canonical"
-TEAM_NAME="industrial"
-CLI_TOOL="gh"
-DRY_RUN=false
+REPOSITORY_OWNER="${REPOSITORY_OWNER:-canonical}"
+TEAM_NAME="${TEAM_NAME:-industrial}"
+CLI_TOOL="${CLI_TOOL:-gh}"
+DRY_RUN="${DRY_RUN:-false}"
 
 print_cmd() {
     printf "+ "
@@ -171,6 +171,8 @@ print_help() {
     echo ""
     echo "This script will guide you through the creation and setup of a new repository for an inference snap."
     echo "It will ask you for the necessary information and then create the repository with the appropriate settings and permissions."
+    echo ""
+    echo "Configuration defaults can be overridden with environment variables: REPOSITORY_OWNER, TEAM_NAME, CLI_TOOL, DRY_RUN."
     echo ""
     echo "You can use '--dry-run' option to see what actions would be taken without actually performing them."
     echo ""
