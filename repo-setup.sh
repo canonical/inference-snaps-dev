@@ -76,12 +76,7 @@ EOF
 add_team_permissions() {
     # Add REPOSITORY_OWNER/TEAM_NAME (e.g. "@canonical/industrial") team with direct access (admin permissions)
     echo "Granting team permissions to @${REPOSITORY_OWNER}/${TEAM_NAME}..."
-    gh_api_json PUT "/orgs/${REPOSITORY_OWNER}/teams/${TEAM_NAME}/repos/${REPOSITORY_OWNER}/${repo_name}" "$(cat <<EOF
-{
-    "permission": "admin"
-}
-EOF
-)"
+    gh_api_json PUT "/orgs/${REPOSITORY_OWNER}/teams/${TEAM_NAME}/repos/${REPOSITORY_OWNER}/${repo_name}" "{\"permission\": \"admin\"}"
 }
 
 add_branch_rules() {
@@ -115,8 +110,8 @@ EOF
 add_workflow_trigger_labels() {
     echo "Creating workflow trigger labels..."
 
-    gh_cmd label create trigger-build --repo "${REPOSITORY_OWNER}/${repo_name}" --color 78AF54 --description "Trigger build pipeline and publish snap" --force
-    gh_cmd label create trigger-tests --repo "${REPOSITORY_OWNER}/${repo_name}" --color 9A1F77 --description "Trigger test pipeline on last build, if not present triggers also build" --force
+    gh_cmd label create --force trigger-build --repo "${REPOSITORY_OWNER}/${repo_name}" --color 78AF54 --description "Trigger build pipeline and publish snap"
+    gh_cmd label create --force trigger-tests --repo "${REPOSITORY_OWNER}/${repo_name}" --color 9A1F77 --description "Trigger test pipeline on last build, if not present triggers also build"
 }
 
 print_help() {
