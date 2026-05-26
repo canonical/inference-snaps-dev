@@ -3,6 +3,7 @@
 set -euo pipefail
 
 # Configuration variables
+RULESET_FILE=${RULESET_FILE:-"data/repository/default_ruleset.json"}
 REPOSITORY_OWNER="${REPOSITORY_OWNER:-canonical}"
 TEAM_NAME="${TEAM_NAME:-industrial}"
 CLI_TOOL="${CLI_TOOL:-gh-beta}"
@@ -76,7 +77,7 @@ Optional arguments:
   --help                    Show this help message and exit.
 
 Environment overrides:
-  REPOSITORY_OWNER, TEAM_NAME, CLI_TOOL, DRY_RUN
+  REPOSITORY_OWNER, TEAM_NAME, CLI_TOOL, DRY_RUN, RULESET_FILE
 
 Examples:
   $0 --model model5 --snap model5 --visibility public
@@ -189,7 +190,7 @@ add_team_permissions() {
 add_branch_rules() {
     echo "Creating branch ruleset for the default branch..."
 
-    gh_api_json POST "/repos/${REPOSITORY_OWNER}/${repo_name}/rulesets" "$(cat data/repository/default_ruleset.json)"
+    gh_api_json POST "/repos/${REPOSITORY_OWNER}/${repo_name}/rulesets" "$(cat "$RULESET_FILE")"
 }
 
 add_website_and_description() {
@@ -225,6 +226,12 @@ main() {
     # Args parsing and validation
     parse_args "$@"
     validate_inputs
+
+    # Ensure required files exist
+    if [[ ! -f "$RULESET_FILE" ]]; then
+        fail "Ruleset file '$RULESET_FILE' not found."
+    fi
+
 
     if [[ "$dry_run" == true ]]; then
         echo "Dry run mode: no changes will be made to GitHub."
