@@ -208,7 +208,7 @@ main() {
         exit 1
     fi
 
-    if [[ "$DRY_RUN" == false ]] && ! "$CLI_TOOL" auth status >/dev/null 2>&1; then
+    if [[ "$DRY_RUN" == false ]] && ! gh_cmd auth status >/dev/null 2>&1; then
         echo "Error: GitHub CLI is not authenticated. Run 'gh auth login' first."
         exit 1
     fi
