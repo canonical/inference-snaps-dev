@@ -78,7 +78,7 @@ Optional arguments:
   --help                    Show this help message and exit.
 
 Environment overrides:
-  REPOSITORY_OWNER, TEAM_NAME, CLI_TOOL, DRY_RUN, RULESET_FILE
+  REPOSITORY_OWNER, TEAM_NAME, CLI_TOOL, RULESET_FILE
 
 Examples:
   $0 --model model5 --snap model5 --visibility public
