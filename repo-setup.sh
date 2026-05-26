@@ -5,8 +5,14 @@ set -euo pipefail
 # Configuration variables
 REPOSITORY_OWNER="${REPOSITORY_OWNER:-canonical}"
 TEAM_NAME="${TEAM_NAME:-industrial}"
-CLI_TOOL="${CLI_TOOL:-gh}"
-DRY_RUN="${DRY_RUN:-false}"
+CLI_TOOL="${CLI_TOOL:-gh-beta}"
+
+model_name=""
+snap_name=""
+repo_name=""
+private=false
+dry_run=false
+assume_yes=false
 
 print_cmd() {
     printf "+ "
@@ -15,7 +21,7 @@ print_cmd() {
 }
 
 gh_cmd() {
-    if [[ "$DRY_RUN" == true ]]; then
+    if [[ "$dry_run" == true ]]; then
         print_cmd "$CLI_TOOL" "$@"
     else
         "$CLI_TOOL" "$@"
@@ -27,7 +33,7 @@ gh_api_json() {
     local endpoint="$2"
     local payload="$3"
 
-    if [[ "$DRY_RUN" == true ]]; then
+    if [[ "$dry_run" == true ]]; then
         print_cmd "$CLI_TOOL" api --method "$method" "$endpoint" --input -
         printf "%s\n" "$payload"
     else
@@ -36,6 +42,10 @@ gh_api_json() {
 }
 
 ask_yes_no() {
+    if [[ "$assume_yes" == true ]]; then
+        return 0
+    fi
+
     read -p "$1 (y/N): " response
     case "$response" in
         [yY][eE][sS]|[yY])
@@ -45,6 +55,98 @@ ask_yes_no() {
             return 1
             ;;
     esac
+}
+
+print_help() {
+    cat <<EOF
+Usage: $0 --model <model_name> --snap <snap_name> [options]
+
+Create and configure a new inference snap repository under ${REPOSITORY_OWNER}.
+
+Required arguments:
+  --model <model_name>   Model name used in the repository description.
+  --snap <snap_name>     Snap store name. Must be lowercase and contain only
+                         letters, digits, and single dashes.
+
+Optional arguments:
+  --repo <repo_name>     Repository name. Defaults to <snap_name>-snap.
+  --private              Create the repository as private. Defaults to public.
+  --assume-yes           Skip confirmation prompts.
+  --dry-run              Print GitHub commands without executing them.
+  --help                 Show this help message and exit.
+
+Environment overrides:
+  REPOSITORY_OWNER, TEAM_NAME, CLI_TOOL, DRY_RUN
+
+Examples:
+  $0 --model model5 --snap model5
+  $0 --model "Model 3.5 Flash" --snap "model3-5-flash" --repo custom-repo --private --assume-yes
+EOF
+}
+
+fail() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+validate_snap_name() {
+    local value="$1"
+
+    if [[ ! "$value" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+        fail "invalid snap name '$value'. Expected lowercase letters, digits, and single dashes only."
+    fi
+}
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --model)
+                [[ $# -ge 2 ]] || fail "--model requires a value"
+                model_name="$2"
+                shift 2
+                ;;
+            --snap)
+                [[ $# -ge 2 ]] || fail "--snap requires a value"
+                snap_name="$2"
+                shift 2
+                ;;
+            --repo)
+                [[ $# -ge 2 ]] || fail "--repo requires a value"
+                repo_name="$2"
+                shift 2
+                ;;
+            --private)
+                private=true
+                shift
+                ;;
+            --assume-yes)
+                assume_yes=true
+                shift
+                ;;
+            --dry-run)
+                dry_run=true
+                shift
+                ;;
+            --help)
+                print_help
+                exit 0
+                ;;
+            *)
+                fail "unknown argument '$1'"
+                ;;
+        esac
+    done
+}
+
+validate_inputs() {
+    [[ -n "$model_name" ]] || fail "--model is required and cannot be empty"
+    [[ -n "$snap_name" ]] || fail "--snap is required and cannot be empty"
+
+    validate_snap_name "$snap_name"
+
+    if [[ -z "$repo_name" ]]; then
+        repo_name="${snap_name}-snap"
+    fi
 }
 
 create_repo() {
@@ -113,80 +215,21 @@ add_workflow_trigger_labels() {
     gh_cmd label create --force trigger-build --repo "${REPOSITORY_OWNER}/${repo_name}" --color 78AF54 --description "Trigger build pipeline and publish snap"
     gh_cmd label create --force trigger-tests --repo "${REPOSITORY_OWNER}/${repo_name}" --color 9A1F77 --description "Trigger test pipeline on last build, if not present triggers also build"
 }
-
-print_help() {
-    echo "Usage: $0"
-    echo ""
-    echo "This script will guide you through the creation and setup of a new repository for an inference snap."
-    echo "It will ask you for the necessary information and then create the repository with the appropriate settings and permissions."
-    echo ""
-    echo "Configuration defaults can be overridden with environment variables: REPOSITORY_OWNER, TEAM_NAME, CLI_TOOL, DRY_RUN."
-    echo ""
-    echo "You can use '--dry-run' option to see what actions would be taken without actually performing them."
-    echo ""
-}
-
 main() {
-    # Read parameters (--help or --dry-run)
-    for arg in "$@"; do
-        case "$arg" in
-            --dry-run)
-                DRY_RUN=true
-                ;;
-            --help)
-                print_help
-                exit 0
-                ;;
-            *)
-                echo "Error: unknown argument '$arg'"
-                print_help
-                exit 1
-                ;;
-        esac
-    done
+    parse_args "$@"
+    validate_inputs
 
-    if [[ "$DRY_RUN" == true ]]; then
+    if [[ "$dry_run" == true ]]; then
         echo "Dry run mode: no changes will be made to GitHub."
     fi
 
-    echo "This script will guide you into the creation and setup of a new repository for an inference snap."
-    echo ""
-
     # Check if GitHub CLI is installed
     if ! command -v "$CLI_TOOL" &> /dev/null; then
-        echo "Error: GitHub CLI ($CLI_TOOL) is required, but not installed. You can install it from https://cli.github.com/."
-        exit 1
+        fail "GitHub CLI ($CLI_TOOL) is required, but not installed. You can install it from https://cli.github.com/."
     fi
 
-    if [[ "$DRY_RUN" == false ]] && ! gh_cmd auth status >/dev/null 2>&1; then
-        echo "Error: GitHub CLI is not authenticated. Run 'gh auth login' first."
-        exit 1
-    fi
-
-    # Data input: model name
-    read -p "> Enter the AI model name (e.g. 'model5'): " model_name
-    if [[ -z "$model_name" ]]; then
-        echo "Error: model name cannot be empty."
-        exit 1
-    fi
-
-    # Data input: snap store name
-    read -p "> Enter the snap store name (default: '${model_name}'): " snap_name
-    if [[ -z "$snap_name" ]]; then
-        snap_name="$model_name"
-    fi
-
-    # Data input: repository name
-    read -p "> Enter a name for the new repository (default: '${snap_name}-snap'): " repo_name
-    if [[ -z "$repo_name" ]]; then
-        repo_name="${snap_name}-snap"
-    fi
-
-    # Data input: private or public repository
-    if ask_yes_no "> Should the repository be private?"; then
-        private=true
-    else
-        private=false
+    if [[ "$dry_run" != true ]] && ! gh_cmd auth status >/dev/null 2>&1; then
+        fail "GitHub CLI is not authenticated. Run 'gh auth login' first."
     fi
 
     # Summary and confirmation
@@ -200,7 +243,9 @@ main() {
     echo "Once created, the repository will be available at https://www.github.com/$REPOSITORY_OWNER/$repo_name"
     echo ""
 
-    if ! ask_yes_no "> Do you want to proceed with these settings?"; then
+    if [[ "$assume_yes" == true ]]; then
+        echo "Assuming yes: continuing without prompts."
+    elif ! ask_yes_no "> Do you want to proceed with these settings?"; then
         echo "Aborting."
         exit 0
     fi
