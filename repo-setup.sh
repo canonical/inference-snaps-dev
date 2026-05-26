@@ -8,6 +8,7 @@ REPOSITORY_OWNER="${REPOSITORY_OWNER:-canonical}"
 TEAM_NAME="${TEAM_NAME:-industrial}"
 CLI_TOOL="${CLI_TOOL:-gh-beta}"
 
+# Global variables
 model_name=""
 snap_name=""
 repo_name=""
@@ -233,18 +234,18 @@ main() {
     fi
 
 
-    if [[ "$dry_run" == true ]]; then
-        echo "Dry run mode: no changes will be made to GitHub."
-    fi
-
     # Check if GitHub CLI is installed
     if ! command -v "$CLI_TOOL" &> /dev/null; then
         fail "GitHub CLI ($CLI_TOOL) is required, but not installed. You can install it from https://cli.github.com/."
     fi
 
-    # Check if GitHub CLI is authenticated (only if not in dry-run mode)
-    if [[ "$dry_run" != true ]] && ! gh_cmd auth status >/dev/null 2>&1; then
-        fail "GitHub CLI is not authenticated. Run 'gh auth login' first."
+    if [[ "$dry_run" == true ]]; then
+        echo "Dry run mode: no changes will be made to GitHub."
+    else 
+        # Check if GitHub CLI is authenticated
+        if ! gh_cmd auth status >/dev/null 2>&1; then
+            fail "GitHub CLI is not authenticated. Run 'gh auth login' first."
+        fi
     fi
 
     # Summary and confirmation
