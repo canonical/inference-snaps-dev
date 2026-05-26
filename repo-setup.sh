@@ -87,54 +87,7 @@ EOF
 add_branch_rules() {
     echo "Creating branch ruleset for the default branch..."
 
-    gh_api_json POST "/repos/${REPOSITORY_OWNER}/${repo_name}/rulesets" "$(cat <<EOF
-{
-    "name": "main-branch-protection",
-    "target": "branch",
-    "enforcement": "active",
-    "bypass_actors": [
-        {
-            "actor_id": 5,
-            "actor_type": "RepositoryRole",
-            "bypass_mode": "pull_request"
-        }
-    ],
-    "conditions": {
-        "ref_name": {
-            "include": [
-                "~DEFAULT_BRANCH"
-            ],
-            "exclude": []
-        }
-    },
-    "rules": [
-        {
-            "type": "deletion"
-        },
-        {
-            "type": "non_fast_forward"
-        },
-        {
-            "type": "required_signatures"
-        },
-        {
-            "type": "pull_request",
-            "parameters": {
-                "required_approving_review_count": 1,
-                "dismiss_stale_reviews_on_push": false,
-                "required_reviewers": [],
-                "require_code_owner_review": false,
-                "require_last_push_approval": false,
-                "required_review_thread_resolution": false,
-                "allowed_merge_methods": [
-                    "squash"
-                ]
-            }
-        }
-    ]
-}
-EOF
-)"
+    gh_api_json POST "/repos/${REPOSITORY_OWNER}/${repo_name}/rulesets" "$(cat data/repository/default_ruleset.json)"
 }
 
 add_website_and_description() {
