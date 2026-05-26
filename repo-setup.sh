@@ -157,13 +157,13 @@ EOF
 
 add_website_and_description() {
 #   - Add description: "Local inference with ${model_name}"
-#   - Add website: "https://snapcraft.io/${model_name}"
+#   - Add website: "https://snapcraft.io/${snap_name}"
 #   - Add Topic: "inference-snap"
     echo "Setting repository description, website, and topic..."
     gh_api_json PATCH "/repos/${REPOSITORY_OWNER}/${repo_name}" "$(cat <<EOF
 {
     "description": "Local inference with ${model_name}",
-    "homepage": "https://snapcraft.io/${model_name}"
+    "homepage": "https://snapcraft.io/${snap_name}"
 }
 EOF
 )"
