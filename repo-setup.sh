@@ -144,14 +144,6 @@ add_branch_rules() {
                     "squash"
                 ]
             }
-        },
-        {
-            "type": "required_status_checks",
-            "parameters": {
-                "do_not_enforce_on_create": false,
-                "required_status_checks": [],
-                "strict_required_status_checks_policy": true
-            }
         }
     ]
 }
