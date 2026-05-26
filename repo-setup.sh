@@ -6,7 +6,7 @@ set -euo pipefail
 RULESET_FILE=${RULESET_FILE:-"data/repository/default_ruleset.json"}
 REPOSITORY_OWNER="${REPOSITORY_OWNER:-canonical}"
 TEAM_NAME="${TEAM_NAME:-industrial}"
-CLI_TOOL="${CLI_TOOL:-gh-beta}"
+CLI_TOOL="${CLI_TOOL:-gh}"
 
 # Global variables
 model_name=""
