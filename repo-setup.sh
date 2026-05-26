@@ -182,9 +182,9 @@ main() {
     fi
 
     # Data input: repository name
-    read -p "> Enter a name for the new repository (default: '${model_name}-snap'): " repo_name
+    read -p "> Enter a name for the new repository (default: '${snap_name}-snap'): " repo_name
     if [[ -z "$repo_name" ]]; then
-        repo_name="${model_name}-snap"
+        repo_name="${snap_name}-snap"
     fi
 
     # Data input: private or public repository
