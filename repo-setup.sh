@@ -219,15 +219,15 @@ main() {
     echo ""
 
     # Check if GitHub CLI is installed
-    # if ! command -v "$CLI_TOOL" &> /dev/null; then
-    #     echo "Error: GitHub CLI ($CLI_TOOL) is required, but not installed. You can install it from https://cli.github.com/."
-    #     exit 1
-    # fi
-# 
-    # if [[ "$DRY_RUN" == false ]] && ! "$CLI_TOOL" auth status >/dev/null 2>&1; then
-    #     echo "Error: GitHub CLI is not authenticated. Run 'gh auth login' first."
-    #     exit 1
-    # fi
+    if ! command -v "$CLI_TOOL" &> /dev/null; then
+        echo "Error: GitHub CLI ($CLI_TOOL) is required, but not installed. You can install it from https://cli.github.com/."
+        exit 1
+    fi
+
+    if [[ "$DRY_RUN" == false ]] && ! "$CLI_TOOL" auth status >/dev/null 2>&1; then
+        echo "Error: GitHub CLI is not authenticated. Run 'gh auth login' first."
+        exit 1
+    fi
 
     # Data input: model name
     read -p "> Enter the AI model name (e.g. 'model5'): " model_name
