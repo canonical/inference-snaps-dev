@@ -163,8 +163,27 @@ validate_inputs() {
 
 create_repo() {
     echo "Creating repository ${REPOSITORY_OWNER}/${repo_name}..."
-    gh_cmd repo create "${REPOSITORY_OWNER}/${repo_name}" "--${visibility}"
+    
+    repo_description="Local inference with ${model_name}"
+    repo_homepage="https://snapcraft.io/${snap_name}"
 
+    # Create repo
+    gh_cmd repo create "${REPOSITORY_OWNER}/${repo_name}" \
+        "--${visibility}" \
+        --description "$repo_description" \
+        --homepage "$repo_homepage"
+
+    # Add topic
+    echo "Setting repository topic..."
+    gh_api_json PUT "/repos/${REPOSITORY_OWNER}/${repo_name}/topics" "$(cat <<EOF
+{
+    "names": [
+        "inference-snap"
+    ]
+}
+EOF
+)"
+    # Customize settings after creation, since some settings (e.g. squash merge) can't be set during creation
     echo "Applying repository-level settings after creation..."
     gh_api_json PATCH "/repos/${REPOSITORY_OWNER}/${repo_name}" "$(cat <<EOF
 {
@@ -184,36 +203,15 @@ EOF
 
 add_team_permissions() {
     # Add REPOSITORY_OWNER/TEAM_NAME (e.g. "@canonical/industrial") team with direct access (admin permissions)
+    # Doing this with "--team" during repo creation isn't reliable, see here: https://github.com/cli/cli/discussions/6906
+
     echo "Granting team permissions to @${REPOSITORY_OWNER}/${TEAM_NAME}..."
     gh_api_json PUT "/orgs/${REPOSITORY_OWNER}/teams/${TEAM_NAME}/repos/${REPOSITORY_OWNER}/${repo_name}" "{\"permission\": \"admin\"}"
 }
 
 add_branch_rules() {
     echo "Creating branch ruleset for the default branch..."
-
     gh_api_json POST "/repos/${REPOSITORY_OWNER}/${repo_name}/rulesets" "$(cat "$RULESET_FILE")"
-}
-
-add_website_and_description() {
-    # Add description and website
-    echo "Setting repository description, website, and topic..."
-    gh_api_json PATCH "/repos/${REPOSITORY_OWNER}/${repo_name}" "$(cat <<EOF
-{
-    "description": "Local inference with ${model_name}",
-    "homepage": "https://snapcraft.io/${snap_name}"
-}
-EOF
-)"
-
-    # Add topic
-    gh_api_json PUT "/repos/${REPOSITORY_OWNER}/${repo_name}/topics" "$(cat <<EOF
-{
-    "names": [
-        "inference-snap"
-    ]
-}
-EOF
-)"
 }
 
 add_workflow_trigger_labels() {
@@ -271,7 +269,6 @@ main() {
     create_repo
     add_team_permissions
     add_branch_rules
-    add_website_and_description
     add_workflow_trigger_labels
 
     # Completion message
