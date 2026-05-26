@@ -66,7 +66,7 @@ Create and configure a new inference snap repository under ${REPOSITORY_OWNER}.
 Required arguments:
   --model <model_name>      Model name used in the repository description.
   --snap <snap_name>        Snap store name. Must be lowercase and contain only
-                         letters, digits, and single dashes.
+                            letters, digits, and single dashes.
   --visibility <visibility> Repository visibility: public, private, or internal.
 
 Optional arguments:
@@ -220,7 +220,9 @@ add_workflow_trigger_labels() {
     gh_cmd label create --force trigger-build --repo "${REPOSITORY_OWNER}/${repo_name}" --color 78AF54 --description "Trigger build pipeline and publish snap"
     gh_cmd label create --force trigger-tests --repo "${REPOSITORY_OWNER}/${repo_name}" --color 9A1F77 --description "Trigger test pipeline on last build, if not present triggers also build"
 }
+
 main() {
+    # Args parsing and validation
     parse_args "$@"
     validate_inputs
 
@@ -233,6 +235,7 @@ main() {
         fail "GitHub CLI ($CLI_TOOL) is required, but not installed. You can install it from https://cli.github.com/."
     fi
 
+    # Check if GitHub CLI is authenticated (only if not in dry-run mode)
     if [[ "$dry_run" != true ]] && ! gh_cmd auth status >/dev/null 2>&1; then
         fail "GitHub CLI is not authenticated. Run 'gh auth login' first."
     fi
@@ -243,13 +246,14 @@ main() {
     echo "  - Model name: $model_name"
     echo "  - Repository name: $repo_name"
     echo "  - Snap name: $snap_name"
-    echo "  - Repository visibility: $([[ "$private" == true ]] && echo "private" || echo "public")"
+    echo "  - Repository visibility: $visibility"
     echo ""
     echo "Once created, the repository will be available at https://www.github.com/$REPOSITORY_OWNER/$repo_name"
     echo ""
 
+    # Confirmation
     if [[ "$assume_yes" == true ]]; then
-        echo "Assuming yes: continuing without prompts."
+        echo "Assuming yes: skipping confirmation prompts."
     elif ! ask_yes_no "> Do you want to proceed with these settings?"; then
         echo "Aborting."
         exit 0
