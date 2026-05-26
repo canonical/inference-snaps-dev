@@ -247,6 +247,8 @@ main() {
     echo "  - Snap name: $snap_name"
     echo "  - Repository visibility: $([[ "$private" == true ]] && echo "private" || echo "public")"
     echo ""
+    echo "Once created, the repository will be available at https://www.github.com/$REPOSITORY_OWNER/$repo_name"
+    echo ""
 
     if ! ask_yes_no "> Do you want to proceed with these settings?"; then
         echo "Aborting."
