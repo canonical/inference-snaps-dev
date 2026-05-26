@@ -10,7 +10,7 @@ CLI_TOOL="${CLI_TOOL:-gh-beta}"
 model_name=""
 snap_name=""
 repo_name=""
-private=false
+visibility=""
 dry_run=false
 assume_yes=false
 
@@ -59,28 +59,28 @@ ask_yes_no() {
 
 print_help() {
     cat <<EOF
-Usage: $0 --model <model_name> --snap <snap_name> [options]
+Usage: $0 --model <model_name> --snap <snap_name> --visibility <public|private|internal> [options]
 
 Create and configure a new inference snap repository under ${REPOSITORY_OWNER}.
 
 Required arguments:
-  --model <model_name>   Model name used in the repository description.
-  --snap <snap_name>     Snap store name. Must be lowercase and contain only
+  --model <model_name>      Model name used in the repository description.
+  --snap <snap_name>        Snap store name. Must be lowercase and contain only
                          letters, digits, and single dashes.
+  --visibility <visibility> Repository visibility: public, private, or internal.
 
 Optional arguments:
-  --repo <repo_name>     Repository name. Defaults to <snap_name>-snap.
-  --private              Create the repository as private. Defaults to public.
-  --assume-yes           Skip confirmation prompts.
-  --dry-run              Print GitHub commands without executing them.
-  --help                 Show this help message and exit.
+  --repo <repo_name>        Repository name. Defaults to <snap_name>-snap.
+  --assume-yes              Skip confirmation prompts.
+  --dry-run                 Print GitHub commands without executing them.
+  --help                    Show this help message and exit.
 
 Environment overrides:
   REPOSITORY_OWNER, TEAM_NAME, CLI_TOOL, DRY_RUN
 
 Examples:
-  $0 --model model5 --snap model5
-  $0 --model "Model 3.5 Flash" --snap "model3-5-flash" --repo custom-repo --private --assume-yes
+  $0 --model model5 --snap model5 --visibility public
+  $0 --model "Model 3.5 Flash" --snap "model3-5-flash" --repo custom-repo --visibility private --assume-yes
 EOF
 }
 
@@ -115,9 +115,10 @@ parse_args() {
                 repo_name="$2"
                 shift 2
                 ;;
-            --private)
-                private=true
-                shift
+            --visibility)
+                [[ $# -ge 2 ]] || fail "--visibility requires a value"
+                visibility="$2"
+                shift 2
                 ;;
             --assume-yes)
                 assume_yes=true
@@ -141,6 +142,15 @@ parse_args() {
 validate_inputs() {
     [[ -n "$model_name" ]] || fail "--model is required and cannot be empty"
     [[ -n "$snap_name" ]] || fail "--snap is required and cannot be empty"
+    [[ -n "$visibility" ]] || fail "--visibility is required and cannot be empty"
+
+    case "$visibility" in
+        public|private|internal)
+            ;;
+        *)
+            fail "invalid visibility '$visibility'. Expected 'public', 'private', or 'internal'."
+            ;;
+    esac
 
     validate_snap_name "$snap_name"
 
@@ -150,13 +160,8 @@ validate_inputs() {
 }
 
 create_repo() {
-    local visibility_flag="--public"
-    if [[ "$private" == true ]]; then
-        visibility_flag="--private"
-    fi
-
     echo "Creating repository ${REPOSITORY_OWNER}/${repo_name}..."
-    gh_cmd repo create "${REPOSITORY_OWNER}/${repo_name}" "$visibility_flag"
+    gh_cmd repo create "${REPOSITORY_OWNER}/${repo_name}" "--${visibility}"
 
     echo "Applying repository-level settings after creation..."
     gh_api_json PATCH "/repos/${REPOSITORY_OWNER}/${repo_name}" "$(cat <<EOF
