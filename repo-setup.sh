@@ -175,8 +175,8 @@ validate_inputs() {
 create_repo() {
     echo "Creating repository ${REPOSITORY_OWNER}/${repo_name}..."
     
-    repo_description="Local inference with ${model_name}"
-    repo_homepage="https://snapcraft.io/${snap_name}"
+    local repo_description="Local inference with ${model_name}"
+    local repo_homepage="https://snapcraft.io/${snap_name}"
 
     # Create repo
     gh_cmd repo create "${REPOSITORY_OWNER}/${repo_name}" \
@@ -244,7 +244,6 @@ main() {
     if [[ ! -f "$RULESET_FILE" ]]; then
         fail "Ruleset file '$RULESET_FILE' not found."
     fi
-
 
     # Check if GitHub CLI is installed
     if ! command -v "$CLI_TOOL" &> /dev/null; then
