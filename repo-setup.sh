@@ -54,7 +54,7 @@ ask_yes_no() {
         return 0
     fi
 
-    read -p "$1 (y/N): " response
+    read -r -p "$1 (y/N): " response
     case "$response" in
         [yY][eE][sS]|[yY])
             return 0
