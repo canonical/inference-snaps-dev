@@ -216,6 +216,9 @@ add_team_permissions() {
     # Add REPOSITORY_OWNER/TEAM_SLUG (e.g. "@canonical/industrial") team with direct access (admin permissions)
     # Doing this with "--team" during repo creation isn't reliable, see here: https://github.com/cli/cli/discussions/6906
 
+    # API specification: https://docs.github.com/en/rest/teams/teams?apiVersion=2026-03-10#add-or-update-team-repository-permissions
+    # Permission levels: https://docs.github.com/en/organizations/managing-user-access-to-your-organizations-repositories/managing-repository-roles/repository-roles-for-an-organization#permission-levels-for-repositories-owned-by-an-organization
+
     echo "Granting team permissions to @${REPOSITORY_OWNER}/${TEAM_SLUG}..."
     gh_api_json PUT "/orgs/${REPOSITORY_OWNER}/teams/${TEAM_SLUG}/repos/${REPOSITORY_OWNER}/${repo_name}" "{\"permission\": \"admin\"}"
 }
