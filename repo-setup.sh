@@ -241,8 +241,8 @@ add_branch_rules() {
 add_workflow_trigger_labels() {
     echo "Creating workflow trigger labels..."
 
-    gh_cmd label create --force trigger-build --repo "${REPOSITORY_OWNER}/${repo_name}" --color 78AF54 --description "Trigger build pipeline and publish snap"
-    gh_cmd label create --force trigger-tests --repo "${REPOSITORY_OWNER}/${repo_name}" --color 9A1F77 --description "Trigger test pipeline on last build, if not present triggers also build"
+    gh_cmd label create --force trigger-build --repo "${REPOSITORY_OWNER}/${repo_name}" --color EEEEEE --description "Trigger build pipeline and publish snap"
+    gh_cmd label create --force trigger-tests --repo "${REPOSITORY_OWNER}/${repo_name}" --color 666666 --description "Trigger test pipeline on last build, if not present triggers also build"
 }
 
 main() {
