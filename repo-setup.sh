@@ -5,13 +5,13 @@ set -euo pipefail
 # Configuration variables
 RULESET_FILE=${RULESET_FILE:-"data/repository/default_ruleset.json"}
 REPOSITORY_OWNER="${REPOSITORY_OWNER:-canonical}"
-TEAM_SLUG="${TEAM_SLUG:-industrial}"
 CLI_TOOL="${CLI_TOOL:-gh}"
 
 # Global variables
 model_name=""
 snap_name=""
 repo_name=""
+team_slug=""
 visibility=""
 dry_run=false
 assume_yes=false
@@ -82,6 +82,7 @@ Required arguments:
   --visibility <visibility> Repository visibility: public, private, or internal.
 
 Optional arguments:
+  --add-team <team_slug>    Add a team with direct access (admin permissions) to the repository.
   --repo <repo_name>        Repository name. Defaults to <snap_name>-snap.
   --assume-yes              Skip confirmation prompts.
   --debug                   Show full GitHub API responses.
@@ -89,7 +90,7 @@ Optional arguments:
   --help                    Show this help message and exit.
 
 Environment overrides:
-  REPOSITORY_OWNER, TEAM_SLUG, CLI_TOOL, RULESET_FILE
+  REPOSITORY_OWNER, CLI_TOOL, RULESET_FILE
 
 Examples:
   $0 --model model5 --snap model5 --visibility public
@@ -126,6 +127,11 @@ parse_args() {
             --repo)
                 [[ $# -ge 2 ]] || fail "--repo requires a value"
                 repo_name="$2"
+                shift 2
+                ;;
+            --add-team)
+                [[ $# -ge 2 ]] || fail "--add-team requires a value"
+                team_slug="$2"
                 shift 2
                 ;;
             --visibility)
@@ -217,14 +223,14 @@ EOF
 }
 
 add_team_permissions() {
-    # Add REPOSITORY_OWNER/TEAM_SLUG (e.g. "@canonical/industrial") team with direct access (admin permissions)
+    # Add REPOSITORY_OWNER/team_slug (e.g. "@canonical/industrial") team with direct access (admin permissions)
     # Doing this with "--team" during repo creation isn't reliable, see here: https://github.com/cli/cli/discussions/6906
 
     # API specification: https://docs.github.com/en/rest/teams/teams?apiVersion=2026-03-10#add-or-update-team-repository-permissions
     # Permission levels: https://docs.github.com/en/organizations/managing-user-access-to-your-organizations-repositories/managing-repository-roles/repository-roles-for-an-organization#permission-levels-for-repositories-owned-by-an-organization
 
-    echo "Granting team permissions to @${REPOSITORY_OWNER}/${TEAM_SLUG}..."
-    gh_api_json PUT "/orgs/${REPOSITORY_OWNER}/teams/${TEAM_SLUG}/repos/${REPOSITORY_OWNER}/${repo_name}" "{\"permission\": \"admin\"}"
+    echo "Granting team permissions to @${REPOSITORY_OWNER}/${team_slug}..."
+    gh_api_json PUT "/orgs/${REPOSITORY_OWNER}/teams/${team_slug}/repos/${REPOSITORY_OWNER}/${repo_name}" "{\"permission\": \"admin\"}"
 }
 
 add_branch_rules() {
@@ -285,7 +291,9 @@ main() {
     # Execution
     create_repo
     add_workflow_trigger_labels
-    add_team_permissions
+    if [[ -n "$team_slug" ]]; then
+        add_team_permissions
+    fi
     add_branch_rules
 
     # Completion message
