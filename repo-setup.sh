@@ -35,16 +35,20 @@ gh_api_json() {
     local method="$1"
     local endpoint="$2"
     local payload="$3"
+    local response=""
+    local status=0
 
     if [[ "$dry_run" == true ]]; then
         print_cmd "$CLI_TOOL" api --method "$method" "$endpoint" --input -
         printf "%s\n" "$payload"
     else
-        if [[ "$debug" == true ]]; then
-            printf "%s\n" "$payload" | "$CLI_TOOL" api --method "$method" "$endpoint" --input -
-        else
-            # Response body is not needed; suppress it to avoid pager/full-screen output.
-            printf "%s\n" "$payload" | "$CLI_TOOL" api --method "$method" "$endpoint" --input - >/dev/null
+        # Keep successful calls quiet, but print API output when a call fails.
+        response="$(printf "%s\n" "$payload" | "$CLI_TOOL" api --method "$method" "$endpoint" --input - 2>&1)" || status=$?
+        if [[ "$status" -ne 0 || "$debug" == true ]]; then
+            if [[ -n "$response" ]]; then
+                printf "%s\n" "$response" >&2
+            fi
+            return "$status"
         fi
     fi
 }
