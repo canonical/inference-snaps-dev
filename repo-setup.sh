@@ -5,7 +5,7 @@ set -euo pipefail
 # Configuration variables
 RULESET_FILE=${RULESET_FILE:-"data/repository/default_ruleset.json"}
 REPOSITORY_OWNER="${REPOSITORY_OWNER:-canonical}"
-TEAM_NAME="${TEAM_NAME:-industrial}"
+TEAM_SLUG="${TEAM_SLUG:-industrial}"
 CLI_TOOL="${CLI_TOOL:-gh}"
 
 # Global variables
@@ -85,7 +85,7 @@ Optional arguments:
   --help                    Show this help message and exit.
 
 Environment overrides:
-  REPOSITORY_OWNER, TEAM_NAME, CLI_TOOL, RULESET_FILE
+  REPOSITORY_OWNER, TEAM_SLUG, CLI_TOOL, RULESET_FILE
 
 Examples:
   $0 --model model5 --snap model5 --visibility public
@@ -213,11 +213,11 @@ EOF
 }
 
 add_team_permissions() {
-    # Add REPOSITORY_OWNER/TEAM_NAME (e.g. "@canonical/industrial") team with direct access (admin permissions)
+    # Add REPOSITORY_OWNER/TEAM_SLUG (e.g. "@canonical/industrial") team with direct access (admin permissions)
     # Doing this with "--team" during repo creation isn't reliable, see here: https://github.com/cli/cli/discussions/6906
 
-    echo "Granting team permissions to @${REPOSITORY_OWNER}/${TEAM_NAME}..."
-    gh_api_json PUT "/orgs/${REPOSITORY_OWNER}/teams/${TEAM_NAME}/repos/${REPOSITORY_OWNER}/${repo_name}" "{\"permission\": \"admin\"}"
+    echo "Granting team permissions to @${REPOSITORY_OWNER}/${TEAM_SLUG}..."
+    gh_api_json PUT "/orgs/${REPOSITORY_OWNER}/teams/${TEAM_SLUG}/repos/${REPOSITORY_OWNER}/${repo_name}" "{\"permission\": \"admin\"}"
 }
 
 add_branch_rules() {
