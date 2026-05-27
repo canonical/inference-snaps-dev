@@ -280,9 +280,9 @@ main() {
 
     # Execution
     create_repo
+    add_workflow_trigger_labels
     add_team_permissions
     add_branch_rules
-    add_workflow_trigger_labels
 
     # Completion message
     echo "Repository setup complete!"
