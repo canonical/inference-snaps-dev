@@ -238,6 +238,8 @@ EOF
 }
 
 add_team_permissions() {
+    [[ -n "$team_slug" ]] || return 0
+
     # Add REPOSITORY_OWNER/team_slug (e.g. "@canonical/industrial") team with direct access (admin permissions)
     # Doing this with "--team" during repo creation isn't reliable, see here: https://github.com/cli/cli/discussions/6906
 
@@ -309,9 +311,7 @@ main() {
     # Execution
     create_repo
     add_workflow_trigger_labels
-    if [[ -n "$team_slug" ]]; then
-        add_team_permissions
-    fi
+    add_team_permissions
     add_branch_rules
 
     # Completion message
