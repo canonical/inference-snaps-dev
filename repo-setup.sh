@@ -122,6 +122,32 @@ validate_snap_name() {
     fi
 }
 
+validate_owner_name() {
+    local value="$1"
+
+    # GitHub user/org names are 1-39 chars, alphanumeric or single hyphens, and cannot start/end with '-'.
+    if [[ ! "$value" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,37}[A-Za-z0-9])?$ ]]; then
+        fail "invalid owner '$value'. Expected 1-39 characters using letters, digits, and single dashes; cannot start or end with a dash."
+    fi
+
+    if [[ "$value" == *--* ]]; then
+        fail "invalid owner '$value'. Consecutive dashes are not allowed in GitHub owner names."
+    fi
+}
+
+validate_repo_name() {
+    local value="$1"
+
+    # Repository names cannot contain spaces or '/'. Keep this strict to avoid malformed API calls.
+    if [[ ! "$value" =~ ^[A-Za-z0-9._-]+$ ]]; then
+        fail "invalid repo name '$value'. Expected letters, digits, dot, underscore, or dash only."
+    fi
+
+    if [[ "$value" == *.git ]]; then
+        fail "invalid repo name '$value'. Do not include the '.git' suffix."
+    fi
+}
+
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -204,7 +230,14 @@ validate_team_slug() {
 validate_inputs() {
     [[ -n "$model_name" ]] || fail "--model is required and cannot be empty"
     [[ -n "$snap_name" ]] || fail "--snap is required and cannot be empty"
+    validate_snap_name "$snap_name"
+
     [[ -n "$repo_owner" ]] || fail "--owner is required and cannot be empty"
+    validate_owner_name "$repo_owner"
+
+    if [[ -n "$repo_name" ]]; then
+        validate_repo_name "$repo_name"
+    fi
 
     if [[ "$modify_existing_repo" == false ]]; then
         # Only validate visibility if we're creating a new repo.
@@ -217,8 +250,6 @@ validate_inputs() {
                 ;;
         esac
     fi
-
-    validate_snap_name "$snap_name"
 
     # Ensure required files exist
     if [[ -n "$ruleset_file" && ! -f "$ruleset_file" ]]; then
