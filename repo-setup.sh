@@ -372,7 +372,7 @@ main() {
     echo "  - Team with admin access: ${team_slug:-none}"
     echo "  - Branch ruleset file: ${ruleset_file:-none}"
     echo ""
-    echo "The repository will be available at https://www.github.com/$repo_owner/$repo_name"
+    echo "The repository will be available at https://github.com/$repo_owner/$repo_name"
     echo ""
 
     if [[ "$modify_existing_repo" == true ]]; then
@@ -397,7 +397,7 @@ main() {
 
     # Completion message
     echo "Repository setup complete!"
-    echo "Access it here: https://www.github.com/$repo_owner/$repo_name"
+    echo "Access it here: https://github.com/$repo_owner/$repo_name"
 }
 
 main "$@"
