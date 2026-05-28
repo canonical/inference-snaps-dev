@@ -36,19 +36,19 @@ gh_api_json() {
     local endpoint="$2"
     local payload="$3"
     local response=""
-    local status=0
+    local exit_code=0
 
     if [[ "$dry_run" == true ]]; then
         print_cmd "$CLI_TOOL" api --method "$method" "$endpoint" --input -
         printf "%s\n" "$payload"
     else
         # Keep successful calls quiet, but print API output when a call fails.
-        response="$(printf "%s\n" "$payload" | "$CLI_TOOL" api --method "$method" "$endpoint" --input - 2>&1)" || status=$?
-        if [[ "$status" -ne 0 || "$debug" == true ]]; then
+        response="$(printf "%s\n" "$payload" | "$CLI_TOOL" api --method "$method" "$endpoint" --input - 2>&1)" || exit_code=$?
+        if [[ "$exit_code" -ne 0 || "$debug" == true ]]; then
             if [[ -n "$response" ]]; then
                 printf "%s\n" "$response" >&2
             fi
-            return "$status"
+            return "$exit_code"
         fi
     fi
 }
@@ -177,8 +177,9 @@ validate_inputs() {
 
     validate_snap_name "$snap_name"
 
-    if [[ -z "$repo_name" ]]; then
-        repo_name="${snap_name}-snap"
+    # Ensure required files exist
+    if [[ ! -f "$RULESET_FILE" ]]; then
+        fail "Ruleset file '$RULESET_FILE' not found."
     fi
 }
 
@@ -246,14 +247,14 @@ add_workflow_trigger_labels() {
 }
 
 main() {
-    # Args parsing and validation
     parse_args "$@"
-    validate_inputs
 
-    # Ensure required files exist
-    if [[ ! -f "$RULESET_FILE" ]]; then
-        fail "Ruleset file '$RULESET_FILE' not found."
+    # Infer repo name if not provided
+    if [[ -z "$repo_name" ]]; then
+        repo_name="${snap_name}-snap"
     fi
+
+    validate_inputs
 
     # Check if GitHub CLI is installed
     if ! command -v "$CLI_TOOL" &> /dev/null; then
@@ -269,7 +270,7 @@ main() {
         fi
     fi
 
-    # Summary and confirmation
+    # Summary
     echo ""
     echo "Repository will be created with the following settings:"
     echo "  - Model name: $model_name"
