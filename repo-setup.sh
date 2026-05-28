@@ -4,13 +4,13 @@ set -euo pipefail
 
 # Configuration variables
 RULESET_FILE=${RULESET_FILE:-"data/repository/default_ruleset.json"}
-REPOSITORY_OWNER="${REPOSITORY_OWNER:-canonical}"
 CLI_TOOL="${CLI_TOOL:-gh}"
 
 # Global variables
 model_name=""
 snap_name=""
 repo_name=""
+repo_owner=""
 team_slug=""
 visibility=""
 dry_run=false
@@ -71,15 +71,16 @@ ask_yes_no() {
 
 print_help() {
     cat <<EOF
-Usage: $0 --model <model_name> --snap <snap_name> --visibility <public|private|internal> [options]
+Usage: $0 --model <model_name> --snap <snap_name> --visibility <public|private|internal> --owner <owner> [options]
 
-Create and configure a new inference snap repository under ${REPOSITORY_OWNER}.
+Create and configure a new inference snap repository.
 
 Required arguments:
   --model <model_name>      Model name used in the repository description.
   --snap <snap_name>        Snap store name. Must be lowercase and contain only
                             letters, digits, and single dashes.
   --visibility <visibility> Repository visibility: public, private, or internal.
+  --owner <owner>           Repository owner (user or organization).
 
 Optional arguments:
   --add-team <team_slug>    Add a team with direct access (admin permissions) to the repository.
@@ -90,11 +91,11 @@ Optional arguments:
   --help                    Show this help message and exit.
 
 Environment overrides:
-  REPOSITORY_OWNER, CLI_TOOL, RULESET_FILE
+  CLI_TOOL, RULESET_FILE
 
 Examples:
-  $0 --model model5 --snap model5 --visibility public
-  $0 --model "Model 3.5 Flash" --snap "model3-5-flash" --repo custom-repo --visibility private --assume-yes
+  $0 --model model5 --snap model5 --visibility public --owner canonical
+  $0 --model "Model 3.5 Flash" --snap "model3-5-flash" --owner canonical --repo custom-repo --visibility private --assume-yes
 EOF
 }
 
@@ -122,6 +123,11 @@ parse_args() {
             --snap)
                 [[ $# -ge 2 ]] || fail "--snap requires a value"
                 snap_name="$2"
+                shift 2
+                ;;
+            --owner)
+                [[ $# -ge 2 ]] || fail "--owner requires a value"
+                repo_owner="$2"
                 shift 2
                 ;;
             --repo)
@@ -166,13 +172,13 @@ validate_team_slug() {
     [[ -n "$team_slug" ]] || return 0
 
     if [[ "$dry_run" == true ]]; then
-        echo "Dry run: skipping team existence check for @${REPOSITORY_OWNER}/${team_slug}."
+        echo "Dry run: skipping team existence check for @${repo_owner}/${team_slug}."
         return 0
     fi
 
-    echo "Validating team @${REPOSITORY_OWNER}/${team_slug} exists..."
-    if ! "$CLI_TOOL" api "/orgs/${REPOSITORY_OWNER}/teams/${team_slug}" >/dev/null 2>&1; then
-        fail "team '@${REPOSITORY_OWNER}/${team_slug}' not found or inaccessible."
+    echo "Validating team @${repo_owner}/${team_slug} exists..."
+    if ! "$CLI_TOOL" api "/orgs/${repo_owner}/teams/${team_slug}" >/dev/null 2>&1; then
+        fail "team '@${repo_owner}/${team_slug}' not found or inaccessible."
     fi
 }
 
@@ -180,6 +186,7 @@ validate_inputs() {
     [[ -n "$model_name" ]] || fail "--model is required and cannot be empty"
     [[ -n "$snap_name" ]] || fail "--snap is required and cannot be empty"
     [[ -n "$visibility" ]] || fail "--visibility is required and cannot be empty"
+    [[ -n "$repo_owner" ]] || fail "--owner is required and cannot be empty"
 
     case "$visibility" in
         public|private|internal)
@@ -198,20 +205,20 @@ validate_inputs() {
 }
 
 create_repo() {
-    echo "Creating repository ${REPOSITORY_OWNER}/${repo_name}..."
+    echo "Creating repository ${repo_owner}/${repo_name}..."
     
     local repo_description="Local inference with ${model_name}"
     local repo_homepage="https://snapcraft.io/${snap_name}"
 
     # Create repo
-    gh_cmd repo create "${REPOSITORY_OWNER}/${repo_name}" \
+    gh_cmd repo create "${repo_owner}/${repo_name}" \
         "--${visibility}" \
         --description "$repo_description" \
         --homepage "$repo_homepage"
 
     # Add topic
     echo "Setting repository topic..."
-    gh_api_json PUT "/repos/${REPOSITORY_OWNER}/${repo_name}/topics" "$(cat <<EOF
+    gh_api_json PUT "/repos/${repo_owner}/${repo_name}/topics" "$(cat <<EOF
 {
     "names": [
         "inference-snap"
@@ -221,7 +228,7 @@ EOF
 )"
     # Customize settings after creation, since some settings (e.g. squash merge) can't be set during creation
     echo "Applying repository-level settings after creation..."
-    gh_api_json PATCH "/repos/${REPOSITORY_OWNER}/${repo_name}" "$(cat <<EOF
+    gh_api_json PATCH "/repos/${repo_owner}/${repo_name}" "$(cat <<EOF
 {
     "has_wiki": false,
     "has_issues": false,
@@ -246,20 +253,20 @@ add_team_permissions() {
     # API specification: https://docs.github.com/en/rest/teams/teams?apiVersion=2026-03-10#add-or-update-team-repository-permissions
     # Permission levels: https://docs.github.com/en/organizations/managing-user-access-to-your-organizations-repositories/managing-repository-roles/repository-roles-for-an-organization#permission-levels-for-repositories-owned-by-an-organization
 
-    echo "Granting team permissions to @${REPOSITORY_OWNER}/${team_slug}..."
-    gh_api_json PUT "/orgs/${REPOSITORY_OWNER}/teams/${team_slug}/repos/${REPOSITORY_OWNER}/${repo_name}" "{\"permission\": \"admin\"}"
+    echo "Granting team permissions to @${repo_owner}/${team_slug}..."
+    gh_api_json PUT "/orgs/${repo_owner}/teams/${team_slug}/repos/${repo_owner}/${repo_name}" "{\"permission\": \"admin\"}"
 }
 
 add_branch_rules() {
     echo "Creating branch ruleset for the default branch..."
-    gh_api_json POST "/repos/${REPOSITORY_OWNER}/${repo_name}/rulesets" "$(cat "$RULESET_FILE")"
+    gh_api_json POST "/repos/${repo_owner}/${repo_name}/rulesets" "$(cat "$RULESET_FILE")"
 }
 
 add_workflow_trigger_labels() {
     echo "Creating workflow trigger labels..."
 
-    gh_cmd label create --force trigger-build --repo "${REPOSITORY_OWNER}/${repo_name}" --color EEEEEE --description "Trigger build pipeline and publish snap"
-    gh_cmd label create --force trigger-tests --repo "${REPOSITORY_OWNER}/${repo_name}" --color 666666 --description "Trigger test pipeline on last build, if not present triggers also build"
+    gh_cmd label create --force trigger-build --repo "${repo_owner}/${repo_name}" --color EEEEEE --description "Trigger build pipeline and publish snap"
+    gh_cmd label create --force trigger-tests --repo "${repo_owner}/${repo_name}" --color 666666 --description "Trigger test pipeline on last build, if not present triggers also build"
 }
 
 main() {
@@ -297,7 +304,7 @@ main() {
     echo "  - Repository visibility: $visibility"
     echo "  - Team with admin access: ${team_slug:-none}"
     echo ""
-    echo "Once created, the repository will be available at https://www.github.com/$REPOSITORY_OWNER/$repo_name"
+    echo "Once created, the repository will be available at https://www.github.com/$repo_owner/$repo_name"
     echo ""
 
     # Confirmation
@@ -316,7 +323,7 @@ main() {
 
     # Completion message
     echo "Repository setup complete!"
-    echo "Access it here: https://www.github.com/$REPOSITORY_OWNER/$repo_name"
+    echo "Access it here: https://www.github.com/$repo_owner/$repo_name"
 }
 
 main "$@"
