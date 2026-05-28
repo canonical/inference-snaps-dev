@@ -261,7 +261,7 @@ ensure_repo_exists() {
     if [[ "$modify_existing_repo" == true ]]; then
         # Validate repo existence
         echo "Verifying repository ${repo_owner}/${repo_name} exists for modification..."
-        if ! "$CLI_TOOL" repo view "${repo_owner}/${repo_name}" >/dev/null 2>&1; then
+        if ! gh_cmd repo view "${repo_owner}/${repo_name}"; then
             fail "Repository '${repo_owner}/${repo_name}' not found or inaccessible. Cannot modify non-existing repository."
         fi
     else
