@@ -3,7 +3,6 @@
 set -euo pipefail
 
 # Configuration variables
-RULESET_FILE=${RULESET_FILE:-"data/repository/default_ruleset.json"}
 CLI_TOOL="${CLI_TOOL:-gh}"
 
 # Global variables
@@ -13,6 +12,7 @@ repo_name=""
 repo_owner=""
 team_slug=""
 visibility=""
+ruleset_file=""
 dry_run=false
 assume_yes=false
 debug=false
@@ -85,17 +85,24 @@ Required arguments:
 Optional arguments:
   --add-team <team_slug>    Add a team with direct access (admin permissions) to the repository.
   --repo <repo_name>        Repository name. Defaults to <snap_name>-snap.
+  --add-ruleset <file>      Add branch rules from a ruleset file.
   --assume-yes              Skip confirmation prompts.
   --debug                   Show full GitHub API responses.
   --dry-run                 Print GitHub commands without executing them.
   --help                    Show this help message and exit.
 
 Environment overrides:
-  CLI_TOOL, RULESET_FILE
+  CLI_TOOL                  Command-line tool for GitHub interactions (default: gh).
 
 Examples:
   $0 --model model5 --snap model5 --visibility public --owner canonical
-  $0 --model "Model 3.5 Flash" --snap "model3-5-flash" --owner canonical --repo custom-repo --visibility private --assume-yes
+  $0 --model "Model 3.5 Flash" \
+    --snap "model3-5-flash" \
+    --owner canonical \
+    --repo custom-repo \
+    --visibility private \
+    --add-ruleset data/repository/default_ruleset.json \
+    --assume-yes
 EOF
 }
 
@@ -138,6 +145,11 @@ parse_args() {
             --add-team)
                 [[ $# -ge 2 ]] || fail "--add-team requires a value"
                 team_slug="$2"
+                shift 2
+                ;;
+            --add-ruleset)
+                [[ $# -ge 2 ]] || fail "--add-ruleset requires a value"
+                ruleset_file="$2"
                 shift 2
                 ;;
             --visibility)
@@ -199,8 +211,8 @@ validate_inputs() {
     validate_snap_name "$snap_name"
 
     # Ensure required files exist
-    if [[ ! -f "$RULESET_FILE" ]]; then
-        fail "Ruleset file '$RULESET_FILE' not found."
+    if [[ -n "$ruleset_file" && ! -f "$ruleset_file" ]]; then
+        fail "Ruleset file '$ruleset_file' not found."
     fi
 }
 
@@ -245,7 +257,10 @@ EOF
 }
 
 add_team_permissions() {
-    [[ -n "$team_slug" ]] || return 0
+    if [[ -z "$team_slug" ]]; then
+        echo "Skipping team permissions setup: no team specified."
+        return 0
+    fi
 
     # Add REPOSITORY_OWNER/team_slug (e.g. "@canonical/industrial") team with direct access (admin permissions)
     # Doing this with "--team" during repo creation isn't reliable, see here: https://github.com/cli/cli/discussions/6906
@@ -258,8 +273,13 @@ add_team_permissions() {
 }
 
 add_branch_rules() {
+    if [[ -z "$ruleset_file" ]]; then
+        echo "Skipping branch rules setup: no ruleset file provided."
+        return 0
+    fi
+
     echo "Creating branch ruleset for the default branch..."
-    gh_api_json POST "/repos/${repo_owner}/${repo_name}/rulesets" "$(cat "$RULESET_FILE")"
+    gh_api_json POST "/repos/${repo_owner}/${repo_name}/rulesets" "$(cat "$ruleset_file")"
 }
 
 add_workflow_trigger_labels() {
@@ -303,6 +323,7 @@ main() {
     echo "  - Snap name: $snap_name"
     echo "  - Repository visibility: $visibility"
     echo "  - Team with admin access: ${team_slug:-none}"
+    echo "  - Branch ruleset file: ${ruleset_file:-none}"
     echo ""
     echo "Once created, the repository will be available at https://www.github.com/$repo_owner/$repo_name"
     echo ""
