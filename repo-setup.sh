@@ -13,6 +13,7 @@ repo_owner=""
 team_slug=""
 visibility=""
 ruleset_file=""
+modify_existing_repo=false
 dry_run=false
 assume_yes=false
 debug=false
@@ -86,6 +87,8 @@ Optional arguments:
   --add-team <team_slug>    Add a team with direct access (admin permissions) to the repository.
   --repo <repo_name>        Repository name. Defaults to <snap_name>-snap.
   --add-ruleset <file>      Add branch rules from a ruleset file.
+  --modify-existing-repo    Skip repository creation and apply settings to an existing 
+                            repository. If used, --visibility is ignored.
   --assume-yes              Skip confirmation prompts.
   --debug                   Show full GitHub API responses.
   --dry-run                 Print GitHub commands without executing them.
@@ -157,6 +160,10 @@ parse_args() {
                 visibility="$2"
                 shift 2
                 ;;
+            --modify-existing-repo)
+                modify_existing_repo=true
+                shift
+                ;;
             --assume-yes)
                 assume_yes=true
                 shift
@@ -197,16 +204,19 @@ validate_team_slug() {
 validate_inputs() {
     [[ -n "$model_name" ]] || fail "--model is required and cannot be empty"
     [[ -n "$snap_name" ]] || fail "--snap is required and cannot be empty"
-    [[ -n "$visibility" ]] || fail "--visibility is required and cannot be empty"
     [[ -n "$repo_owner" ]] || fail "--owner is required and cannot be empty"
 
-    case "$visibility" in
-        public|private|internal)
-            ;;
-        *)
-            fail "invalid visibility '$visibility'. Expected 'public', 'private', or 'internal'."
-            ;;
-    esac
+    if [[ "$modify_existing_repo" == false ]]; then
+        # Only validate visibility if we're creating a new repo.
+        [[ -n "$visibility" ]] || fail "--visibility is required and cannot be empty"
+        case "$visibility" in
+            public|private|internal)
+                ;;
+            *)
+                fail "invalid visibility '$visibility'. Expected 'public', 'private', or 'internal'."
+                ;;
+        esac
+    fi
 
     validate_snap_name "$snap_name"
 
@@ -216,18 +226,21 @@ validate_inputs() {
     fi
 }
 
-create_repo() {
-    echo "Creating repository ${repo_owner}/${repo_name}..."
-    
-    local repo_description="Local inference with ${model_name}"
-    local repo_homepage="https://snapcraft.io/${snap_name}"
+ensure_repo_exists() {
+    if [[ "$modify_existing_repo" == true ]]; then
+        # Validate repo existence
+        echo "Verifying repository ${repo_owner}/${repo_name} exists for modification..."
+        if ! "$CLI_TOOL" repo view "${repo_owner}/${repo_name}" >/dev/null 2>&1; then
+            fail "Repository '${repo_owner}/${repo_name}' not found or inaccessible. Cannot modify non-existing repository."
+        fi
+    else
+        # Create repo
+        echo "Creating repository ${repo_owner}/${repo_name}..."
+        gh_cmd repo create "${repo_owner}/${repo_name}" "--${visibility}"
+    fi
+}
 
-    # Create repo
-    gh_cmd repo create "${repo_owner}/${repo_name}" \
-        "--${visibility}" \
-        --description "$repo_description" \
-        --homepage "$repo_homepage"
-
+setup_repository_settings() {
     # Add topic
     echo "Setting repository topic..."
     gh_api_json PUT "/repos/${repo_owner}/${repo_name}/topics" "$(cat <<EOF
@@ -238,10 +251,13 @@ create_repo() {
 }
 EOF
 )"
-    # Customize settings after creation, since some settings (e.g. squash merge) can't be set during creation
+
+    # Customize settings
     echo "Applying repository-level settings after creation..."
     gh_api_json PATCH "/repos/${repo_owner}/${repo_name}" "$(cat <<EOF
 {
+    "description": "Local inference with ${model_name}",
+    "homepage": "https://snapcraft.io/${snap_name}",
     "has_wiki": false,
     "has_issues": false,
     "has_projects": false,
@@ -317,16 +333,21 @@ main() {
 
     # Summary
     echo ""
-    echo "Repository will be created with the following settings:"
+    echo "Repository will be set-up with the following values:"
     echo "  - Model name: $model_name"
     echo "  - Repository: $repo_owner/$repo_name"
     echo "  - Snap name: $snap_name"
-    echo "  - Repository visibility: $visibility"
+    echo "  - Repository visibility: $([[ "$modify_existing_repo" == true ]] && echo "unchanged" || echo "$visibility")"
     echo "  - Team with admin access: ${team_slug:-none}"
     echo "  - Branch ruleset file: ${ruleset_file:-none}"
     echo ""
-    echo "Once created, the repository will be available at https://www.github.com/$repo_owner/$repo_name"
+    echo "The repository will be available at https://www.github.com/$repo_owner/$repo_name"
     echo ""
+
+    if [[ "$modify_existing_repo" == true ]]; then
+        echo "WARNING: --modify-existing-repo is enabled, this script will change settings to an existing repository. Repository visibility will be left unchanged."
+        echo ""
+    fi
 
     # Confirmation
     if [[ "$assume_yes" == true ]]; then
@@ -337,7 +358,8 @@ main() {
     fi
 
     # Execution
-    create_repo
+    ensure_repo_exists
+    setup_repository_settings
     add_workflow_trigger_labels
     add_team_permissions
     add_branch_rules
