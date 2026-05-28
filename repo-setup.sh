@@ -162,6 +162,20 @@ parse_args() {
     done
 }
 
+validate_team_slug() {
+    [[ -n "$team_slug" ]] || return 0
+
+    if [[ "$dry_run" == true ]]; then
+        echo "Dry run: skipping team existence check for @${REPOSITORY_OWNER}/${team_slug}."
+        return 0
+    fi
+
+    echo "Validating team @${REPOSITORY_OWNER}/${team_slug} exists..."
+    if ! "$CLI_TOOL" api "/orgs/${REPOSITORY_OWNER}/teams/${team_slug}" >/dev/null 2>&1; then
+        fail "team '@${REPOSITORY_OWNER}/${team_slug}' not found or inaccessible."
+    fi
+}
+
 validate_inputs() {
     [[ -n "$model_name" ]] || fail "--model is required and cannot be empty"
     [[ -n "$snap_name" ]] || fail "--snap is required and cannot be empty"
@@ -270,6 +284,8 @@ main() {
         fi
     fi
 
+    validate_team_slug
+
     # Summary
     echo ""
     echo "Repository will be created with the following settings:"
@@ -277,6 +293,7 @@ main() {
     echo "  - Repository name: $repo_name"
     echo "  - Snap name: $snap_name"
     echo "  - Repository visibility: $visibility"
+    echo "  - Team with admin access: ${team_slug:-none}"
     echo ""
     echo "Once created, the repository will be available at https://www.github.com/$REPOSITORY_OWNER/$repo_name"
     echo ""
