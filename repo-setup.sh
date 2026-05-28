@@ -319,7 +319,7 @@ main() {
     echo ""
     echo "Repository will be created with the following settings:"
     echo "  - Model name: $model_name"
-    echo "  - Repository name: $repo_name"
+    echo "  - Repository: $repo_owner/$repo_name"
     echo "  - Snap name: $snap_name"
     echo "  - Repository visibility: $visibility"
     echo "  - Team with admin access: ${team_slug:-none}"
