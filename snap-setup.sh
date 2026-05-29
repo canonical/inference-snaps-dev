@@ -154,13 +154,13 @@ ensure_snapcraft_logged_in() {
 }
 
 register_snap() {
-    local visibility_arg=""
+    local register_args=(register "$snap_name" --yes)
+    
     if [[ "$visibility" == "private" ]]; then
-        visibility_arg="--private"
+        register_args+=("--private")
     fi
 
 	echo "Registering snap '$snap_name' with visibility '$visibility'..."
-	local register_args=(register "$snap_name" "$visibility_arg" --yes)
 	sc_cmd "${register_args[@]}"
 }
 
