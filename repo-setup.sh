@@ -382,7 +382,7 @@ main() {
     # Confirmation
     if [[ "$assume_yes" == true ]]; then
         echo "Assuming yes: skipping confirmation prompts."
-    elif ! ask_yes_no "> Do you want to proceed with these settings?"; then
+    elif ! ask_yes_no "Do you want to proceed with these settings?"; then
         echo "Aborting."
         exit 0
     fi
