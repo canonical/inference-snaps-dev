@@ -182,7 +182,7 @@ main() {
     echo "  - Visibility: $visibility"
     echo ""
 
-    if ! ask_yes_no "> Continue"; then
+    if ! ask_yes_no "> Continue?"; then
         echo "Aborting."
         exit 0
     fi
