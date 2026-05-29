@@ -186,9 +186,10 @@ main() {
 	register_snap
 
 	echo "Snap setup complete for '$snap_name'."
-
+    echo "Please visit the snapcraft dashboard to add collaborators:"
+    echo "  https://dashboard.snapcraft.io/snaps/$snap_name/collaboration/"
+    
     if [[ -n "$collaborator_emails_csv" ]]; then
-        echo "Please visit the snapcraft dashboard to add collaborators: https://dashboard.snapcraft.io/snaps/$snap_name/collaboration/"
         echo ""
         echo "Collaborators:"
         echo "  $collaborator_emails_csv"
