@@ -92,7 +92,7 @@ Optional arguments:
   --assume-yes              Skip confirmation prompts.
   --debug                   Show full GitHub API responses.
   --dry-run                 Print GitHub commands without executing them.
-  --help                    Show this help message and exit.
+  -h, --help                    Show this help message and exit.
 
 Environment overrides:
   CLI_TOOL                  Command-line tool for GitHub interactions (default: gh).
@@ -202,7 +202,7 @@ parse_args() {
                 dry_run=true
                 shift
                 ;;
-            --help)
+            -h|--help)
                 print_help
                 exit 0
                 ;;
