@@ -41,7 +41,7 @@ usage() {
 	cat <<EOF
 Usage: $0 --snap <snap_name> --visibility <value> [options]
 
-Register a snap in the store.
+Register a snap in the store. Any collaborators will need to be added manually via the snapcraft dashboard.
 
 Required arguments:
   --snap <snap_name>            Snap name to register.
@@ -49,6 +49,7 @@ Required arguments:
 
 Optional arguments:
   --collaborators <csv>         Comma-separated collaborator email list, e.g. "a@example.com,b@example.com".
+                                Can be provided multiple times to append more emails.
   --assume-yes                  Skip confirmation prompt.
   --dry-run                     Print commands without executing them.
   -h, --help                    Show this help message and exit.
@@ -155,7 +156,7 @@ ensure_snapcraft_logged_in() {
 
 register_snap() {
     local register_args=(register "$snap_name" --yes)
-    
+
     if [[ "$visibility" == "private" ]]; then
         register_args+=("--private")
     fi
