@@ -29,10 +29,6 @@ fail() {
 	exit 1
 }
 
-command_help_exists() {
-	"$CLI_TOOL" help "$1" >/dev/null 2>&1
-}
-
 validate_snap_name() {
 	local value="$1"
 
@@ -97,7 +93,13 @@ parse_args() {
 				;;
 			--collaborators)
 				[[ $# -ge 2 ]] || fail "--collaborators requires a value"
-                collaborator_emails_csv=$([[ -z "$collaborator_emails_csv" ]] && echo "$2" || echo "$collaborator_emails_csv,$2") # Append
+                if [[ -z "$collaborator_emails_csv" ]]; then
+                    # Init
+                    collaborator_emails_csv="$2"
+                else
+                    # Append
+                    collaborator_emails_csv="$collaborator_emails_csv,$2"
+                fi
 				shift 2
 				;;
 			--assume-yes)
