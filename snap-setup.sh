@@ -185,6 +185,7 @@ main() {
 
     register_snap
 
+    echo ""
     echo "Snap setup complete for '$snap_name'."
     echo "Please visit the snapcraft dashboard to add collaborators:"
     echo "  https://dashboard.snapcraft.io/snaps/$snap_name/collaboration/"
