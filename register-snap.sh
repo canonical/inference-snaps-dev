@@ -6,7 +6,6 @@ CLI_TOOL="${CLI_TOOL:-snapcraft}"
 
 snap_name=""
 visibility=""
-collaborator_emails_csv=""
 assume_yes=false
 dry_run=false
 
@@ -41,16 +40,13 @@ usage() {
     cat <<EOF
 Usage: $0 --snap <snap_name> --visibility <value> [options]
 
-Register a snap in the store. Any collaborators will need to be added manually via the snapcraft dashboard.
+Register a snap in the store.
 
 Required arguments:
   --snap <snap_name>            Snap name to register.
   --visibility <value>          Snap visibility: public or private
 
 Optional arguments:
-  --collaborators <csv>         Comma-separated collaborator email list, e.g. "a@example.com,b@example.com".
-                                Can be provided multiple times to append more emails.
-                                Collaborators must still be added manually via the dashboard.
   --assume-yes                  Skip confirmation prompt.
   --dry-run                     Print commands without executing them.
   -h, --help                    Show this help message and exit.
@@ -59,8 +55,8 @@ Environment overrides:
   CLI_TOOL                      Path to the CLI binary to use (default: snapcraft).
 
 Examples:
-  $0 --snap deepseek-r1 --visibility private --collaborators dev@example.com
-  $0 --snap deepseek-r1 --visibility public --collaborators "a@example.com,b@example.com"
+  $0 --snap deepseek-r1 --visibility private
+  $0 --snap deepseek-r1 --visibility public
 EOF
 }
 
@@ -69,7 +65,7 @@ ask_yes_no() {
         return 0
     fi
 
-    if ! read -r -p "$1 (y/N): " response; then
+    if ! read -r -p "$1 [y/N] " response; then
         return 1
     fi
 
@@ -94,17 +90,6 @@ parse_args() {
             --visibility)
                 [[ $# -ge 2 ]] || fail "--visibility requires a value"
                 visibility="$2"
-                shift 2
-                ;;
-            --collaborators)
-                [[ $# -ge 2 ]] || fail "--collaborators requires a value"
-                if [[ -z "$collaborator_emails_csv" ]]; then
-                    # Init
-                    collaborator_emails_csv="$2"
-                else
-                    # Append
-                    collaborator_emails_csv="$collaborator_emails_csv,$2"
-                fi
                 shift 2
                 ;;
             --assume-yes)
@@ -182,7 +167,7 @@ main() {
     echo "  - Visibility: $visibility"
     echo ""
 
-    if ! ask_yes_no "> Continue?"; then
+    if ! ask_yes_no "Continue?"; then
         echo "Aborting."
         exit 0
     fi
@@ -190,16 +175,7 @@ main() {
     register_snap
 
     echo ""
-    echo "Snap setup complete for '$snap_name'."
-    echo "Please visit the snapcraft dashboard to add collaborators:"
-    echo "  https://dashboard.snapcraft.io/snaps/$snap_name/collaboration/"
-
-    if [[ -n "$collaborator_emails_csv" ]]; then
-        echo ""
-        echo "Collaborators:"
-        echo "  $collaborator_emails_csv"
-        echo ""
-    fi
+    echo "Snapcraft dashboard:  https://dashboard.snapcraft.io/snaps/$snap_name"
 }
 
 main "$@"
