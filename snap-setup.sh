@@ -45,7 +45,7 @@ usage() {
 	cat <<EOF
 Usage: $0 --snap <snap_name> --visibility <value> [options]
 
-Register a snap in the store and optionally set initial metadata.
+Register a snap in the store.
 
 Required arguments:
   --snap <snap_name>            Snap name to register.
@@ -100,11 +100,6 @@ parse_args() {
                 collaborator_emails_csv=$([[ -z "$collaborator_emails_csv" ]] && echo "$2" || echo "$collaborator_emails_csv,$2") # Append
 				shift 2
 				;;
-			--set-metadata-from)
-                [[ $# -ge 2 ]] || fail "--set-metadata-from requires a value"
-				metadata_source_file="$2"
-				shift 2
-				;;
 			--assume-yes)
 				assume_yes=true
 				shift
@@ -127,7 +122,6 @@ parse_args() {
 validate_inputs() {
 	[[ -n "$snap_name" ]] || fail "--snap is required"
     [[ -n "$visibility" ]] || fail "--visibility is required"
-    [[ -n "$metadata_source_file" && ! -f "$metadata_source_file" ]] || fail "Cannot access metadata source file: $metadata_source_file"
 
 	validate_snap_name "$snap_name"
 
@@ -168,16 +162,6 @@ register_snap() {
 	sc_cmd "${register_args[@]}"
 }
 
-set_metadata(){
-    if [[ -z "${metadata_source_file:-}" ]]; then
-        echo "No metadata source file provided, skipping metadata upload."
-        return 0
-    fi
-
-    echo "Setting snap metadata from '$metadata_source_file'..."
-    sc_cmd "upload_metadata" "--force" "$metadata_source_file"
-}
-
 main() {
 	parse_args "$@"
 	validate_inputs
@@ -189,7 +173,6 @@ main() {
 	echo "The following setup will be applied:"
 	echo "  - Snap name: $snap_name"
 	echo "  - Visibility: $visibility"
-	echo "  - Snap metadata: $([[ -n "$metadata_source_file" ]] && echo "extracted from $metadata_source_file" || echo "unset")"
 	echo ""
 
 	if ! ask_yes_no "> Continue"; then
@@ -198,7 +181,6 @@ main() {
 	fi
 
 	register_snap
-    set_metadata
 
 	echo "Snap setup complete for '$snap_name'."
 
