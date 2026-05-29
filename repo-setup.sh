@@ -104,8 +104,7 @@ Examples:
     --owner canonical \\
     --repo custom-repo \\
     --visibility private \\
-    --add-ruleset data/repository/default_ruleset.json \\
-    --assume-yes
+    --add-ruleset data/repository/default_ruleset.json
 EOF
 }
 
