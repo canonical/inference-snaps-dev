@@ -50,6 +50,7 @@ Required arguments:
 Optional arguments:
   --collaborators <csv>         Comma-separated collaborator email list, e.g. "a@example.com,b@example.com".
                                 Can be provided multiple times to append more emails.
+                                Collaborators must still be added manually via the dashboard.
   --assume-yes                  Skip confirmation prompt.
   --dry-run                     Print commands without executing them.
   -h, --help                    Show this help message and exit.
@@ -68,7 +69,10 @@ ask_yes_no() {
         return 0
     fi
 
-    read -r -p "$1 (y/N): " response
+    if ! read -r -p "$1 (y/N): " response; then
+        return 1
+    fi
+
     case "$response" in
         [yY][eE][sS]|[yY])
             return 0
@@ -189,7 +193,7 @@ main() {
     echo "Snap setup complete for '$snap_name'."
     echo "Please visit the snapcraft dashboard to add collaborators:"
     echo "  https://dashboard.snapcraft.io/snaps/$snap_name/collaboration/"
-    
+
     if [[ -n "$collaborator_emails_csv" ]]; then
         echo ""
         echo "Collaborators:"
