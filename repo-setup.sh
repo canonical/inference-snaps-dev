@@ -99,12 +99,12 @@ Environment overrides:
 
 Examples:
   $0 --model model5 --snap model5 --visibility public --owner canonical
-  $0 --model "Model 3.5 Flash" \
-    --snap "model3-5-flash" \
-    --owner canonical \
-    --repo custom-repo \
-    --visibility private \
-    --add-ruleset data/repository/default_ruleset.json \
+  $0 --model "Model 3.5 Flash" \\
+    --snap "model3-5-flash" \\
+    --owner canonical \\
+    --repo custom-repo \\
+    --visibility private \\
+    --add-ruleset data/repository/default_ruleset.json \\
     --assume-yes
 EOF
 }
