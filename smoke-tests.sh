@@ -390,7 +390,7 @@ test_automatic_engine_selection() {
   log_section "Automatic engine selection test"
 
   log_info "Running: $snap_name use-engine --auto"
-  engine=$(sudo "$snap_name" use-engine --auto --assume-yes | grep -oP 'Selected engine: \K\S+')
+  engine=$("$snap_name" use-engine --auto --assume-yes | grep -oP 'Selected engine: \K\S+')
 
   log_info "Selected engine: $engine"
 
