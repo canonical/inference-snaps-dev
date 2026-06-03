@@ -14,11 +14,11 @@ inputs:
   max-retries:
     description: Max retries for engine switch
     required: false
-    default: "60"
+    default: "50"
   retry-delay:
     description: Delay between retries in seconds
     required: false
-    default: "60"
+    default: "10"
 
 runs:
   using: composite
@@ -33,8 +33,6 @@ runs:
         set -euo pipefail
 
         action_repo_root="$(realpath "$GITHUB_ACTION_PATH/../../..")"
-
-        find $action_repo_root
 
         # -E tells sudo to preserve the caller's environment variables when running the command
         sudo -E "$action_repo_root/smoke-tests.sh" "${{ inputs.snap-name }}" "${{ inputs.engine }}"
