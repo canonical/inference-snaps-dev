@@ -86,8 +86,8 @@ exit_error() {
 }
 
 usage() {
-  echo "Usage: $0 <ai-model-snap-name> <engine>"
-  echo "Runs smoke tests for one specified engine against a local AI model snap."
+  echo "Usage: $0 <inference-snap-name> <engine>"
+  echo "Runs smoke tests for one specified engine against an inference snap."
   echo
   echo "Environment variables (optional overrides):"
   echo "  CURL_TIMEOUT"

@@ -35,4 +35,4 @@ runs:
         action_repo_root="$(realpath "$GITHUB_ACTION_PATH/../../..")"
 
         # -E tells sudo to preserve the caller's environment variables when running the command
-        sudo -E "$action_repo_root/smoke-tests.sh" "${{ inputs.snap-name }}" "${{ inputs.engine }}"
+        sudo -E "$action_repo_root/smoke-test.sh" "${{ inputs.snap-name }}" "${{ inputs.engine }}"
