@@ -356,7 +356,7 @@ use_engine_with_retry() {
 
 get_curr_engine() {
   local snap_name="$1"
-  echo $("$snap_name" status --format=json | jq -r '.engine')
+  "$snap_name" status --format=json | jq -r '.engine'
 }
 
 test_engine_switching() {
@@ -390,8 +390,7 @@ test_automatic_engine_selection() {
   log_section "Automatic engine selection test"
 
   log_info "Running: $snap_name use-engine --auto"
-  "$snap_name" use-engine --auto --assume-yes
-  engine=$(sudo "$snap_name" use-engine --auto --assume-yes 2>&1 | grep -oP 'Selected engine: \K\S+')
+  engine=$(sudo "$snap_name" use-engine --auto --assume-yes | grep -oP 'Selected engine: \K\S+')
 
   log_info "Selected engine: $engine"
 
@@ -421,7 +420,7 @@ main() {
   # Get server settings
   local server_port
   server_port=$("$snap_name" get http.port)
-  local base_url=$("$snap_name" status --format=json | jq -r .endpoints.openai )
+  local base_url=$("$snap_name" status --format=json | jq -r '.endpoints.openai' )
   local model_name
   model_name=$("$snap_name" get model-name 2>/dev/null || true)
 
