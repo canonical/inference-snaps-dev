@@ -254,7 +254,7 @@ test_configuration_management() {
   "$snap_name" get http.port
 
   log_info "Testing configuration change..."
-  "$snap_name" set http.port=9999
+  "$snap_name" set http.port=9999 --assume-yes
 
   # Verify config change persisted
   local port
@@ -265,7 +265,7 @@ test_configuration_management() {
   log_info "✓ Configuration change persisted successfully"
 
   log_info "Reverting configuration change..."
-  "$snap_name" set http.port="$default_port"
+  "$snap_name" set http.port="$default_port" --assume-yes
 }
 
 # =============================================================================
@@ -390,8 +390,8 @@ test_automatic_engine_selection() {
   log_section "Automatic engine selection test"
 
   log_info "Running: $snap_name use-engine --auto"
-  "$snap_name" use-engine --auto
-  engine=$(sudo "$snap_name" use-engine --auto 2>&1 | grep -oP 'Selected engine: \K\S+')
+  "$snap_name" use-engine --auto --assume-yes
+  engine=$(sudo "$snap_name" use-engine --auto --assume-yes 2>&1 | grep -oP 'Selected engine: \K\S+')
 
   log_info "Selected engine: $engine"
 
