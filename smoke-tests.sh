@@ -157,8 +157,7 @@ test_endpoint() {
 
 test_chat_completion() {
   local base_url="$1"
-  local base_path="$2"
-  local model_name="$3"
+  local model_name="$2"
 
   log_info "Testing chat completion endpoint..."
 
@@ -189,7 +188,7 @@ EOF
 
   local api_response
   api_response=$(
-    curl -X POST "$base_url/$base_path/chat/completions" \
+    curl -X POST "$base_url/chat/completions" \
       -H "Content-Type: application/json" \
       --max-time "$CURL_TIMEOUT" \
       --retry 0 \
@@ -213,16 +212,15 @@ EOF
 
 run_api_tests() {
   local base_url="$1"
-  local base_path="$2"
-  local model_name="$3"
+  local model_name="$2"
 
   log_section "API Endpoint Tests"
 
   # Test models endpoint
-  test_endpoint "$base_url/$base_path/models" "List available models"
+  test_endpoint "$base_url/models" "List available models"
 
   # Test chat completion
-  test_chat_completion "$base_url" "$base_path" "$model_name"
+  test_chat_completion "$base_url" "$model_name"
 }
 
 # =============================================================================
@@ -423,9 +421,7 @@ main() {
   # Get server settings
   local server_port
   server_port=$("$snap_name" get http.port)
-  local base_path
-  base_path=$("$snap_name" get http.base-path)
-  local base_url="http://localhost:$server_port"
+  local base_url=$("$snap_name" status --format=json | jq -r .endpoints.openai )
   local model_name
   model_name=$("$snap_name" get model-name 2>/dev/null || true)
 
@@ -433,7 +429,7 @@ main() {
   check_port_listening "$server_port"
 
   # Run all test suites
-  run_api_tests "$base_url" "$base_path" "$model_name"
+  run_api_tests "$base_url" "$model_name"
   test_snap_installation "$snap_name"
   test_configuration_management "$snap_name"
   test_engine_listing "$snap_name"
