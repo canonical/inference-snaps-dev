@@ -279,7 +279,7 @@ test_engine_listing() {
 
   log_info "Comparing available vs declared engines..."
 
-  mapfile -t avail_engines < <("$snap_name" list-engines | tail -n +2 | awk '{print $1}' | sort)
+  mapfile -t avail_engines < <("$snap_name" list-engines --format=json | yq -p=json -r '.engines[].name' | sort)
   echo -e "Available engines:\n${avail_engines[*]}"
 
   mapfile -t src_engines < <(find "/snap/$AI_SNAP_NAME/current/engines/" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
