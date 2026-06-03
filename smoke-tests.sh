@@ -130,12 +130,27 @@ validate_arguments() {
 
 check_port_listening() {
   local port="$1"
+  local max_retries="${2:-$MAX_RETRIES}"
+  local retry_delay="${3:-$RETRY_DELAY}"
+  local attempt=1
 
-  if ss -tuln | grep -q ":$port "; then
-    log_info "Port $port is listening"
-  else
-    exit_error "Port $port is not listening. Is the snap running?"
-  fi
+  while [[ $attempt -le $max_retries ]]; do
+    log_info "Attempt $attempt/$max_retries: Checking whether port $port is listening"
+
+    if ss -tuln | grep -q ":$port "; then
+      log_info "Port $port is listening"
+      return 0
+    fi
+
+    if [[ $attempt -lt $max_retries ]]; then
+      log_warning "Port $port is not listening yet; retrying in ${retry_delay}s"
+      sleep "$retry_delay"
+    fi
+
+    ((attempt++))
+  done
+
+  exit_error "Port $port is not listening after $max_retries attempts. Is the snap running?"
 }
 
 # =============================================================================
