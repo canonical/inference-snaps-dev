@@ -129,8 +129,8 @@ validate_arguments() {
 
 check_port_listening() {
   local port="$1"
-  local max_retries="${2:-$MAX_RETRIES}"
-  local retry_delay="${3:-$RETRY_DELAY}"
+  local max_retries="$MAX_RETRIES"
+  local retry_delay="$RETRY_DELAY"
   local attempt=1
 
   while [[ $attempt -le $max_retries ]]; do
@@ -159,19 +159,38 @@ check_port_listening() {
 test_endpoint() {
   local endpoint="$1"
   local description="$2"
+  local max_retries="$MAX_RETRIES"
+  local retry_delay="$RETRY_DELAY"
+  local attempt=1
 
   log_info "Testing $description: $endpoint"
 
-  if curl -s --fail-with-body --connect-timeout "$CURL_TIMEOUT" "$endpoint" >/dev/null; then
-    log_info "✓ $description: OK"
-  else
-    exit_error "✗ $description: Failed (HTTP >= 400 or connection error)"
-  fi
+  while [[ $attempt -le $max_retries ]]; do
+    log_info "Attempt $attempt/$max_retries: $description"
+
+    if curl --retry 0 --fail-with-body --connect-timeout "$CURL_TIMEOUT" "$endpoint"; then
+      echo # Add a newline after the curl output
+      log_info "✓ $description: Pass"
+      return 0
+    fi
+
+    if [[ $attempt -lt $max_retries ]]; then
+      log_warning "$description failed; retrying in ${retry_delay}s"
+      sleep "$retry_delay"
+    fi
+
+    ((attempt++))
+  done
+
+  exit_error "✗ $description: Fail after $max_retries attempts"
 }
 
 test_chat_completion() {
   local base_url="$1"
   local model_name="$2"
+  local max_retries=3
+  local retry_delay=20
+  local attempt=1
 
   log_info "Testing chat completion endpoint..."
 
@@ -201,26 +220,40 @@ EOF
   echo -e "Chat payload:\n$json_body"
 
   local api_response
-  api_response=$(
-    curl -X POST "$base_url/chat/completions" \
-      -H "Content-Type: application/json" \
-      --max-time "$CURL_TIMEOUT" \
-      --retry 0 \
-      -d "$json_body" \
-      --fail-with-body \
-      -s \
-      2>/dev/null
-  )
+  while [[ $attempt -le $max_retries ]]; do
+    log_info "Attempt $attempt/$max_retries: Chat completion"
 
-  if [ "$?" -eq 0 ]; then
-    log_info "✓ Chat completion: OK"
-  else
-    exit_error "Chat completion failed (may indicate service issues)"
-  fi
+    set +e
+    api_response=$(
+      curl -X POST "$base_url/chat/completions" \
+        -H "Content-Type: application/json" \
+        --max-time "$CURL_TIMEOUT" \
+        --retry 0 \
+        -d "$json_body" \
+        --fail-with-body \
+        2>/dev/null
+    )
+    local curl_exit_code=$?
+    set -e
 
-  if [ -z "$api_response" ]; then
-    exit_error "Empty response from server"
-  fi
+    if [[ $curl_exit_code -eq 0 ]]; then
+      if [[ -z "$api_response" ]]; then
+        exit_error "Empty response from server"
+      fi
+
+      log_info "✓ Chat completion: OK"
+      return 0
+    fi
+
+    if [[ $attempt -lt $max_retries ]]; then
+      log_warning "Chat completion failed; retrying in ${retry_delay}s"
+      sleep "$retry_delay"
+    fi
+
+    ((attempt++))
+  done
+
+  exit_error "Chat completion failed after $max_retries attempts (may indicate service issues)"
 
 }
 
