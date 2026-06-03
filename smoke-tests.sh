@@ -115,9 +115,9 @@ check_for_curl() {
   fi
 }
 
-check_for_yq() {
-  if ! command -v yq &>/dev/null; then
-    exit_error "yq is required but not installed. Please install yq v4.x and try again."
+check_for_jq() {
+  if ! command -v jq &>/dev/null; then
+    exit_error "jq is not available. Please install it and try again."
   fi
 }
 
@@ -356,7 +356,7 @@ use_engine_with_retry() {
 
 get_curr_engine() {
   local snap_name="$1"
-  echo $("$snap_name" status --format=json 2>&1 | yq -p=json '.engine')
+  echo $("$snap_name" status --format=json | jq -r '.engine')
 }
 
 test_engine_switching() {
@@ -446,7 +446,7 @@ main() {
 # Validation
 check_root_privileges
 check_for_curl
-check_for_yq
+check_for_jq
 validate_arguments "$@"
 
 # Extract arguments
