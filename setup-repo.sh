@@ -59,7 +59,7 @@ ask_yes_no() {
         return 0
     fi
 
-    read -r -p "$1 (y/N): " response
+    read -r -p "$1 [y/N] " response
     case "$response" in
         [yY][eE][sS]|[yY])
             return 0
@@ -104,8 +104,7 @@ Examples:
     --owner canonical \\
     --repo custom-repo \\
     --visibility private \\
-    --add-ruleset data/repository/default_ruleset.json \\
-    --assume-yes
+    --add-ruleset data/repository/default_ruleset.json
 EOF
 }
 
@@ -383,7 +382,7 @@ main() {
     # Confirmation
     if [[ "$assume_yes" == true ]]; then
         echo "Assuming yes: skipping confirmation prompts."
-    elif ! ask_yes_no "> Do you want to proceed with these settings?"; then
+    elif ! ask_yes_no "Do you want to proceed with these settings?"; then
         echo "Aborting."
         exit 0
     fi
