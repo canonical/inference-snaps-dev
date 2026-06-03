@@ -115,9 +115,9 @@ check_for_curl() {
   fi
 }
 
-check_for_yq() {
-  if ! command -v yq &>/dev/null; then
-    exit_error "yq is required but not installed. Please install yq v4.x and try again."
+check_for_jq() {
+  if ! command -v jq &>/dev/null; then
+    exit_error "jq is not available. Please install it and try again."
   fi
 }
 
@@ -157,8 +157,7 @@ test_endpoint() {
 
 test_chat_completion() {
   local base_url="$1"
-  local base_path="$2"
-  local model_name="$3"
+  local model_name="$2"
 
   log_info "Testing chat completion endpoint..."
 
@@ -189,7 +188,7 @@ EOF
 
   local api_response
   api_response=$(
-    curl -X POST "$base_url/$base_path/chat/completions" \
+    curl -X POST "$base_url/chat/completions" \
       -H "Content-Type: application/json" \
       --max-time "$CURL_TIMEOUT" \
       --retry 0 \
@@ -213,16 +212,15 @@ EOF
 
 run_api_tests() {
   local base_url="$1"
-  local base_path="$2"
-  local model_name="$3"
+  local model_name="$2"
 
   log_section "API Endpoint Tests"
 
   # Test models endpoint
-  test_endpoint "$base_url/$base_path/models" "List available models"
+  test_endpoint "$base_url/models" "List available models"
 
   # Test chat completion
-  test_chat_completion "$base_url" "$base_path" "$model_name"
+  test_chat_completion "$base_url" "$model_name"
 }
 
 # =============================================================================
@@ -256,7 +254,7 @@ test_configuration_management() {
   "$snap_name" get http.port
 
   log_info "Testing configuration change..."
-  "$snap_name" set http.port=9999
+  "$snap_name" set http.port=9999 --assume-yes
 
   # Verify config change persisted
   local port
@@ -267,7 +265,7 @@ test_configuration_management() {
   log_info "✓ Configuration change persisted successfully"
 
   log_info "Reverting configuration change..."
-  "$snap_name" set http.port="$default_port"
+  "$snap_name" set http.port="$default_port" --assume-yes
 }
 
 # =============================================================================
@@ -281,7 +279,7 @@ test_engine_listing() {
 
   log_info "Comparing available vs declared engines..."
 
-  mapfile -t avail_engines < <("$snap_name" list-engines | tail -n +2 | awk '{print $1}' | sort)
+  mapfile -t avail_engines < <("$snap_name" list-engines --format=json | jq -r '.engines[].name' | sort)
   echo -e "Available engines:\n${avail_engines[*]}"
 
   mapfile -t src_engines < <(find "/snap/$AI_SNAP_NAME/current/engines/" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
@@ -358,7 +356,7 @@ use_engine_with_retry() {
 
 get_curr_engine() {
   local snap_name="$1"
-  echo $("$snap_name" status --format=json 2>&1 | yq -p=json '.engine')
+  "$snap_name" status --format=json | jq -r '.engine'
 }
 
 test_engine_switching() {
@@ -392,8 +390,7 @@ test_automatic_engine_selection() {
   log_section "Automatic engine selection test"
 
   log_info "Running: $snap_name use-engine --auto"
-  "$snap_name" use-engine --auto
-  engine=$(sudo "$snap_name" use-engine --auto 2>&1 | grep -oP 'Selected engine: \K\S+')
+  engine=$("$snap_name" use-engine --auto --assume-yes | grep -oP 'Selected engine: \K\S+')
 
   log_info "Selected engine: $engine"
 
@@ -423,9 +420,7 @@ main() {
   # Get server settings
   local server_port
   server_port=$("$snap_name" get http.port)
-  local base_path
-  base_path=$("$snap_name" get http.base-path)
-  local base_url="http://localhost:$server_port"
+  local base_url=$("$snap_name" status --format=json | jq -r '.endpoints.openai' )
   local model_name
   model_name=$("$snap_name" get model-name 2>/dev/null || true)
 
@@ -433,7 +428,7 @@ main() {
   check_port_listening "$server_port"
 
   # Run all test suites
-  run_api_tests "$base_url" "$base_path" "$model_name"
+  run_api_tests "$base_url" "$model_name"
   test_snap_installation "$snap_name"
   test_configuration_management "$snap_name"
   test_engine_listing "$snap_name"
@@ -450,7 +445,7 @@ main() {
 # Validation
 check_root_privileges
 check_for_curl
-check_for_yq
+check_for_jq
 validate_arguments "$@"
 
 # Extract arguments
