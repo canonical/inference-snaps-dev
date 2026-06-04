@@ -335,6 +335,26 @@ add_workflow_trigger_labels() {
     gh_cmd label create --force trigger-tests --repo "${repo_owner}/${repo_name}" --color 666666 --description "Trigger test pipeline on last build, if not present triggers also build"
 }
 
+add_github_action_variables() {
+    echo "Creating GitHub Actions variables..."
+
+    gh_api_json POST "/repos/${repo_owner}/${repo_name}/actions/variables" "$(cat <<EOF
+{
+    "name": "PR_BUILD_TRIGGER_LABEL",
+    "value": "trigger-build"
+}
+EOF
+)"
+
+    gh_api_json POST "/repos/${repo_owner}/${repo_name}/actions/variables" "$(cat <<EOF
+{
+    "name": "PR_TEST_TRIGGER_LABEL",
+    "value": "trigger-tests"
+}
+EOF
+)"
+}
+
 main() {
     parse_args "$@"
 
@@ -391,6 +411,7 @@ main() {
     ensure_repo_exists
     setup_repository_settings
     add_workflow_trigger_labels
+    add_github_action_variables
     add_team_permissions
     add_branch_rules
 
