@@ -339,21 +339,30 @@ add_workflow_trigger_labels() {
 add_github_action_variables() {
     echo "Creating GitHub Actions variables..."
 
-    gh_api_json POST "/repos/${repo_owner}/${repo_name}/actions/variables" "$(cat <<EOF
-{
-    "name": "PR_BUILD_TRIGGER_LABEL",
-    "value": "trigger-build"
-}
-EOF
-)"
+    set_github_action_variable() {
+        local name="$1"
+        local value="$2"
 
-    gh_api_json POST "/repos/${repo_owner}/${repo_name}/actions/variables" "$(cat <<EOF
+        # Upsert behavior: update when the variable exists, otherwise create it.
+        if ! gh_api_json PATCH "/repos/${repo_owner}/${repo_name}/actions/variables/${name}" "$(cat <<EOF
 {
-    "name": "PR_TEST_TRIGGER_LABEL",
-    "value": "trigger-tests"
+    "name": "${name}",
+    "value": "${value}"
+}
+EOF
+)"; then
+            gh_api_json POST "/repos/${repo_owner}/${repo_name}/actions/variables" "$(cat <<EOF
+{
+    "name": "${name}",
+    "value": "${value}"
 }
 EOF
 )"
+        fi
+    }
+
+    set_github_action_variable "PR_BUILD_TRIGGER_LABEL" "trigger-build"
+    set_github_action_variable "PR_TEST_TRIGGER_LABEL" "trigger-tests"
 }
 
 main() {
