@@ -260,7 +260,8 @@ ensure_repo_exists() {
     if [[ "$modify_existing_repo" == true ]]; then
         # Validate repo existence
         echo "Verifying repository ${repo_owner}/${repo_name} exists for modification..."
-        if ! gh_cmd repo view "${repo_owner}/${repo_name}"; then
+        # Use a silent API probe instead of `gh repo view` to avoid pager/full-screen output.
+        if ! gh_api_json GET "/repos/${repo_owner}/${repo_name}" ""; then
             fail "Repository '${repo_owner}/${repo_name}' not found or inaccessible. Cannot modify non-existing repository."
         fi
     else
