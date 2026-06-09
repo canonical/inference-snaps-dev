@@ -12,7 +12,7 @@ inputs:
     required: false
     default: "10"
   max-retries:
-    description: Max retries for engine switch
+    description: Max retries for retry logic in smoke tests
     required: false
     default: "50"
   retry-delay:
