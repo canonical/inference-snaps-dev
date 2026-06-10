@@ -203,10 +203,6 @@ test_chat_completion() {
   "model": "$model_name",
   "messages": [
     {
-      "role": "developer",
-      "content": "$system_message"
-    },
-    {
       "role": "user",
       "content": "$prompt"
     }
