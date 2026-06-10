@@ -50,9 +50,8 @@ trap 'error_handler ${LINENO} ${BASH_LINENO[0]} "$BASH_COMMAND" "${FUNCNAME[1]}"
 
 # Configuration defaults (can be overridden by environment variables)
 : "${CURL_TIMEOUT:=10}"
-# Used on engine switch operation
-: "${MAX_RETRIES:=60}"
-: "${RETRY_DELAY:=60}"
+: "${MAX_RETRIES:=50}"
+: "${RETRY_DELAY:=10}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -87,13 +86,13 @@ exit_error() {
 }
 
 usage() {
-  echo "Usage: $0 <ai-model-snap-name> <engine>"
-  echo "Runs smoke tests for one specified engine against a local AI model snap."
+  echo "Usage: $0 <inference-snap-name> <engine>"
+  echo "Runs smoke tests for one specified engine against an inference snap."
   echo
   echo "Environment variables (optional overrides):"
-  echo "  CURL_TIMEOUT         Default: 10 (s)"
-  echo "  MAX_RETRIES          Default: 60"
-  echo "  RETRY_DELAY          Default: 60 (s)"
+  echo "  CURL_TIMEOUT"
+  echo "  MAX_RETRIES"
+  echo "  RETRY_DELAY"
   echo
   echo "Example:"
   echo "CURL_TIMEOUT=40 MAX_RETRIES=10 ./$(basename "$0") deepseek-r1 cpu-tiny"
@@ -130,12 +129,27 @@ validate_arguments() {
 
 check_port_listening() {
   local port="$1"
+  local max_retries="$MAX_RETRIES"
+  local retry_delay="$RETRY_DELAY"
+  local attempt=1
 
-  if ss -tuln | grep -q ":$port "; then
-    log_info "Port $port is listening"
-  else
-    exit_error "Port $port is not listening. Is the snap running?"
-  fi
+  while [[ $attempt -le $max_retries ]]; do
+    log_info "Attempt $attempt/$max_retries: Checking whether port $port is listening"
+
+    if ss -tuln | grep -q ":$port "; then
+      log_info "Port $port is listening"
+      return 0
+    fi
+
+    if [[ $attempt -lt $max_retries ]]; then
+      log_warning "Port $port is not listening yet; retrying in ${retry_delay}s"
+      sleep "$retry_delay"
+    fi
+
+    ((attempt++))
+  done
+
+  exit_error "Port $port is not listening after $max_retries attempts. Is the snap running?"
 }
 
 # =============================================================================
@@ -145,19 +159,38 @@ check_port_listening() {
 test_endpoint() {
   local endpoint="$1"
   local description="$2"
+  local max_retries="$MAX_RETRIES"
+  local retry_delay="$RETRY_DELAY"
+  local attempt=1
 
   log_info "Testing $description: $endpoint"
 
-  if curl -s --fail-with-body --connect-timeout "$CURL_TIMEOUT" "$endpoint" >/dev/null; then
-    log_info "✓ $description: OK"
-  else
-    exit_error "✗ $description: Failed (HTTP >= 400 or connection error)"
-  fi
+  while [[ $attempt -le $max_retries ]]; do
+    log_info "Attempt $attempt/$max_retries: $description"
+
+    if curl --retry 0 --fail-with-body --connect-timeout "$CURL_TIMEOUT" "$endpoint"; then
+      echo # Add a newline after the curl output
+      log_info "✓ $description: Pass"
+      return 0
+    fi
+
+    if [[ $attempt -lt $max_retries ]]; then
+      log_warning "$description failed; retrying in ${retry_delay}s"
+      sleep "$retry_delay"
+    fi
+
+    ((attempt++))
+  done
+
+  exit_error "✗ $description: Fail after $max_retries attempts"
 }
 
 test_chat_completion() {
   local base_url="$1"
   local model_name="$2"
+  local max_retries=3
+  local retry_delay=20
+  local attempt=1
 
   log_info "Testing chat completion endpoint..."
 
@@ -169,10 +202,6 @@ test_chat_completion() {
 {
   "model": "$model_name",
   "messages": [
-    {
-      "role": "developer",
-      "content": "$system_message"
-    },
     {
       "role": "user",
       "content": "$prompt"
@@ -186,27 +215,46 @@ EOF
 
   echo -e "Chat payload:\n$json_body"
 
+  local compact_json_body
+  compact_json_body=$(echo "$json_body" | jq -c .)
+
   local api_response
-  api_response=$(
-    curl -X POST "$base_url/chat/completions" \
-      -H "Content-Type: application/json" \
-      --max-time "$CURL_TIMEOUT" \
-      --retry 0 \
-      -d "$json_body" \
-      --fail-with-body \
-      -s \
-      2>/dev/null
-  )
+  while [[ $attempt -le $max_retries ]]; do
+    log_info "Attempt $attempt/$max_retries: Chat completion"
 
-  if [ "$?" -eq 0 ]; then
-    log_info "✓ Chat completion: OK"
-  else
-    exit_error "Chat completion failed (may indicate service issues)"
-  fi
+    set +e
+    set -x # log the curl command for debugging
+    api_response=$(
+      curl -X POST "$base_url/chat/completions" \
+        -H "Content-Type: application/json" \
+        --max-time "$CURL_TIMEOUT" \
+        --retry 0 \
+        -d "$compact_json_body" \
+        --fail-with-body \
+        2>/dev/null
+    )
+    set +x
+    local curl_exit_code=$?
+    set -e
 
-  if [ -z "$api_response" ]; then
-    exit_error "Empty response from server"
-  fi
+    if [[ $curl_exit_code -eq 0 ]]; then
+      if [[ -z "$api_response" ]]; then
+        exit_error "Empty response from server"
+      fi
+
+      log_info "✓ Chat completion: OK"
+      return 0
+    fi
+
+    if [[ $attempt -lt $max_retries ]]; then
+      log_warning "Chat completion failed; retrying in ${retry_delay}s"
+      sleep "$retry_delay"
+    fi
+
+    ((attempt++))
+  done
+
+  exit_error "Chat completion failed after $max_retries attempts (may indicate service issues)"
 
 }
 
@@ -306,52 +354,12 @@ test_engine_listing() {
 use_engine_with_retry() {
   local snap_name="$1"
   local engine="$2"
-  local max_retries="${3:-$MAX_RETRIES}"
-  local retry_delay="${4:-$RETRY_DELAY}"
-  local attempt=1
 
   log_info "Switching to engine: $engine"
 
-  while [[ $attempt -le $max_retries ]]; do
-    log_info "Attempt $attempt/$max_retries: Switching to engine $engine"
-
-    # Temporarily disable 'set -e' to handle command failure ourselves
-    set +e
-    local output
-    local exit_code
-    output=$("$snap_name" use-engine "$engine" --assume-yes 2>&1)
-    exit_code=$?
-    # Re-enable 'set -e'
-    set -e
-
-    if [[ $exit_code -eq 0 ]]; then
-      log_info "✓ Successfully switched to engine: $engine"
-      return 0
-    fi
-
-    # Check if the error contains "timed out" or "change in progress"
-    if [[ "$output" =~ "timed out" || "$output" =~ "change in progress" ]]; then
-      log_warning "Engine switch timed out (attempt $attempt/$max_retries)"
-      echo "Error output: $output" >&2
-
-      if [[ $attempt -lt $max_retries ]]; then
-        log_info "Waiting ${retry_delay}s before retry..."
-        sleep "$retry_delay"
-        ((attempt++))
-        continue
-      else
-        log_error "Max retries reached. Engine switch failed due to timeout."
-        echo "$output" >&2
-        return 1
-      fi
-    else
-      # Non-timeout error, fail immediately
-      log_error "Engine switch failed with non-timeout error:"
-      echo "$output" >&2
-      return 1
-    fi
-    sleep 2
-  done
+  "$snap_name" use-engine "$engine" --assume-yes
+  
+  log_info "✓ Successfully switched to engine: $engine"
 }
 
 get_curr_engine() {
@@ -422,7 +430,7 @@ main() {
   server_port=$("$snap_name" get http.port)
   local base_url=$("$snap_name" status --format=json | jq -r '.endpoints.openai' )
   local model_name
-  model_name=$("$snap_name" get model-name 2>/dev/null || true)
+  model_name=$("$snap_name" status --format=json | jq -r '.model.name')
 
   # Pre-flight checks
   check_port_listening "$server_port"
