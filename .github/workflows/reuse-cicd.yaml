@@ -1,0 +1,184 @@
+name: Snap CICD
+
+on:
+  workflow_call:
+    inputs:
+      build-runner-amd64:
+        description: |
+          The runner used to build the amd64 snap.
+          
+          The input should be a single-quoted JSON string or array. For example:
+          - '"ubuntu-latest"' for a single label
+          - '[ "self-hosted", "amd64", "large" ]' for multiple labels
+        required: true
+        type: string
+
+      build-runner-arm64:
+        description: |
+          The runner used to build the arm64 snap.  
+
+          The input should be a single-quoted JSON string or array. For example:
+          - '"ubuntu-latest"' for a single label
+          - '[ "self-hosted", "arm64", "large" ]' for multiple labels   
+        required: true
+        type: string
+
+      build-init-script:
+        description: Script to run before building the snap
+        required: false
+        type: string
+
+      snap-name:
+        description: Name of the snap to build and publish
+        required: true
+        type: string
+
+      engine:
+        description: Engine to validate during smoke tests
+        required: true
+        type: string
+      
+      store-track:
+        description: Snap Store track to publish to
+        required: false
+        type: string
+        default: "latest"
+    secrets:
+      store-credentials:
+        description: Snap Store credentials for publishing the snap to the specified channel
+        required: true
+
+
+jobs:
+  build-edge:
+    uses: ./.github/workflows/build-publish-snap.yaml
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ${{ toJSON(inputs.build-runner-arm64) }}
+          - ${{ toJSON(inputs.build-runner-amd64) }}
+    with:
+      runner: "${{ matrix.runner }}"
+      init-build-script: ${{ inputs.build-init-script }}
+      publish-channel: ${{ inputs.store-track }}/edge
+    secrets:
+      store-credentials: ${{ secrets.store-credentials }} 
+
+  # build-edge:
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       runner:
+  #         - ${{ toJSON(inputs.build-runner-arm64) }}
+  #         - ${{ toJSON(inputs.build-runner-amd64) }}
+  #   runs-on: ${{ matrix.runner }}
+    
+  #   steps:
+  #     # Update snapd as we need a recent one to support components
+  #     # Install if missing, e.g. on Github-hosted runners
+  #     - name: Update/Install snapd
+  #       run: |
+  #         sudo snap refresh snapd || sudo snap install snapd
+
+  #     - name: Install Git LFS
+  #       run: sudo apt-get update && sudo apt-get install -y git-lfs
+
+  #     - name: Checkout code
+  #       uses: actions/checkout@v6
+  #       with:
+  #         # Prevent usage of simulated merge commit of PR
+  #         ref: ${{ github.event.pull_request.head.sha || github.sha }}
+  #         lfs: true
+  #         submodules: true
+
+  #     - name: Init build environment
+  #       run: |
+  #         if [ -n "${{ inputs.build-init-script }}" ]; then
+  #           ./"${{ inputs.build-init-script }}"
+  #         fi
+
+  #     - name: Build snap
+  #       uses: canonical/action-build@v1
+
+  #     - name: Publish snap to edge
+  #       env:
+  #         SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.store-credentials }}     
+  #       run: |
+  #         channel="${{ inputs.store-track }}/edge"
+  #         echo -e "Channel:\n\t$channel"
+
+  #         snap_file="$(ls *.snap)"
+  #         snap_size=$(du -h "$snap_file" | cut -f1)
+  #         echo -e "Snap file:\n\t$snap_file $snap_size"
+
+  #         # Build components argument list
+  #         component_args=()
+  #         echo "Snap components:"
+  #         for comp_file in *.comp; do
+  #             # When no .comp files exist, bash leaves the glob pattern unexpanded (*.comp). Check if $comp_file exists.
+  #             [ -f "$comp_file" ] || continue
+
+  #             comp_size=$(du -h "$comp_file" | cut -f1)
+
+  #             # Component file name patterns:
+  #             # <snap_name>+<comp_name>_<comp_version>.comp
+  #             # <snap_name>+<comp_name>.comp
+  #             comp_name=$(echo "$comp_file" | 
+  #                 cut -d'+' -f2 | # drop snap name
+  #                 cut -d'.' -f1 | # drop file extension
+  #                 cut -d'_' -f1) # split by _, take 1st part
+
+  #             echo -e "\t$comp_file $comp_size"
+
+  #             component_args+=(--component "$comp_name=$comp_file")
+  #         done
+
+  #         echo -e "\nUploading snap..."
+  #         set -x
+  #         snapcraft upload "$snap_file" "${component_args[@]}" --release="$channel"
+
+  smoke-test:
+    needs: [build-edge]
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    
+    steps:
+      - name: Refresh/Install snapd
+        run: |
+          sudo snap refresh snapd || sudo snap install snapd
+
+      - name: Install inference snap
+        shell: bash
+        run: |
+          sudo snap install ${{ inputs.snap-name }} --channel ${{ inputs.store-track }}/edge
+  
+      - name: Run smoke tests
+        uses: canonical/inference-snaps-dev/.github/actions/smoke-test@5a44ba739e2ade50f2276b5e246b13b57367915a # change to v2, once ready
+        with:
+          snap-name: ${{ inputs.snap-name }}
+          engine: ${{ inputs.engine }}
+  
+  promote-beta:
+    needs: [smoke-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install snapcraft
+        shell: bash
+        run: |
+          sudo snap install snapcraft --classic
+      
+      - name: Promote to beta
+        env:
+          # Workaround for https://github.com/canonical/snapcraft/issues/4439
+          SNAPCRAFT_HAS_TTY: "true"
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.store-credentials }} 
+        run: |
+          yes | snapcraft promote ${{ inputs.snap-name }} \
+            --from-channel "${{ inputs.store-track }}/edge" \
+            --to-channel   "${{ inputs.store-track }}/beta"
