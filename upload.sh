@@ -12,15 +12,17 @@ if [ "$(echo "$snap_file" | wc -l)" -ne 1 ]; then
     exit 1
 fi
 
-snap_size=$(du -h "$snap_file" | cut -f1)
-echo -e "Snap file:\n\t$snap_file $snap_size"
+snap_size=$(du --apparent-size -b "$snap_file" | cut -f1)
+total_size=$snap_size
+
+snap_size_human=$(numfmt --to=iec "$snap_size")
+echo -e "Snap file:\n\t$snap_file $snap_size_human"
 
 # Build components argument list
 component_args=()
 component_list=()
 echo "Snap components:"
 for comp_file in *.comp; do
-    comp_size=$(du -h "$comp_file" | cut -f1)
 
     # Component file name patterns:
     # <snap_name>+<comp_name>_<comp_version>.comp
@@ -30,7 +32,19 @@ for comp_file in *.comp; do
         cut -d'.' -f1 | # drop file extension
         cut -d'_' -f1) # split by _, take 1st part
 
-    echo -e "\t$comp_file $comp_size"
+    comp_size=$(du --apparent-size -b "$comp_file" | cut -f1)
+    total_size=$((total_size + comp_size))
+
+    comp_size_human=$(numfmt --to=iec "$comp_size")
+    
+    # Red warning for components smaller than 20KB
+    empty_comp_warning=""
+    if [[ $comp_size -lt 20000 ]]; then
+        empty_comp_warning="\033[31m(empty?)\033[0m"
+    fi
+
+    echo -e "\t$comp_file $comp_size_human $empty_comp_warning"
+    
     
     # Check for duplicate components
     for existing_comp in "${component_list[@]}"; do
@@ -46,7 +60,8 @@ done
 
 echo -e "Channel:\n\t$channel"
 
-echo -ne "\nUpload and release? [y/N] "
+total_size_human=$(numfmt --to=iec "$total_size")
+echo -ne "\nUpload $total_size_human and release? [y/N] "
 read confirmation
 if [[ "$confirmation" != "y" && "$confirmation" != "Y" ]]; then
     exit 1
