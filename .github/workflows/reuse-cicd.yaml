@@ -50,20 +50,20 @@ on:
 
 
 jobs:
-  # build-edge:
-  #   uses: ./.github/workflows/build-publish-snap.yaml
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       runner:
-  #         - ${{ toJSON(inputs.build-runner-arm64) }}
-  #         - ${{ toJSON(inputs.build-runner-amd64) }}
-  #   with:
-  #     runner: "${{ matrix.runner }}"
-  #     init-build-script: ${{ inputs.build-init-script }}
-  #     publish-channel: ${{ inputs.store-track }}/edge
-  #   secrets:
-  #     store-credentials: ${{ secrets.store-credentials }} 
+  build-edge:
+    uses: ./.github/workflows/build-publish-snap.yaml
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ${{ toJSON(inputs.build-runner-arm64) }}
+          - ${{ toJSON(inputs.build-runner-amd64) }}
+    with:
+      runner: "${{ matrix.runner }}"
+      init-build-script: ${{ inputs.build-init-script }}
+      publish-channel: ${{ inputs.store-track }}/edge
+    secrets:
+      store-credentials: ${{ secrets.store-credentials }} 
 
   smoke-test:
     # needs: [build-edge]
