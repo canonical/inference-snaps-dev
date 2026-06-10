@@ -66,7 +66,7 @@ jobs:
       store-credentials: ${{ secrets.store-credentials }} 
 
   smoke-test:
-    # needs: [build-edge]
+    needs: [build-edge]
     strategy:
       fail-fast: false
       matrix:
@@ -86,7 +86,7 @@ jobs:
           sudo snap install ${{ inputs.snap-name }} --channel ${{ inputs.store-track }}/edge
   
       - name: Run smoke tests
-        uses: canonical/inference-snaps-dev/.github/actions/smoke-test@5a44ba739e2ade50f2276b5e246b13b57367915a # change to v2, once ready
+        uses: canonical/inference-snaps-dev/.github/actions/smoke-test@v2
         with:
           snap-name: ${{ inputs.snap-name }}
           engine: ${{ inputs.engine }}
