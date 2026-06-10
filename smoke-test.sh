@@ -215,6 +215,9 @@ EOF
 
   echo -e "Chat payload:\n$json_body"
 
+  local compact_json_body
+  compact_json_body=$(echo "$json_body" | jq -c .)
+
   local api_response
   while [[ $attempt -le $max_retries ]]; do
     log_info "Attempt $attempt/$max_retries: Chat completion"
@@ -226,7 +229,7 @@ EOF
         -H "Content-Type: application/json" \
         --max-time "$CURL_TIMEOUT" \
         --retry 0 \
-        -d "$json_body" \
+        -d "$compact_json_body" \
         --fail-with-body \
         2>/dev/null
     )
