@@ -220,6 +220,7 @@ EOF
     log_info "Attempt $attempt/$max_retries: Chat completion"
 
     set +e
+    set -x # log the curl command for debugging
     api_response=$(
       curl -X POST "$base_url/chat/completions" \
         -H "Content-Type: application/json" \
@@ -229,6 +230,7 @@ EOF
         --fail-with-body \
         2>/dev/null
     )
+    set +x
     local curl_exit_code=$?
     set -e
 
@@ -425,7 +427,7 @@ main() {
   server_port=$("$snap_name" get http.port)
   local base_url=$("$snap_name" status --format=json | jq -r '.endpoints.openai' )
   local model_name
-  model_name=$("$snap_name" get model-name 2>/dev/null || true)
+  model_name=$("$snap_name" status --format=json | jq -r '.model.name')
 
   # Pre-flight checks
   check_port_listening "$server_port"
