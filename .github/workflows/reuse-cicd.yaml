@@ -102,10 +102,8 @@ jobs:
       
       - name: Promote to beta
         env:
-          # Workaround for https://github.com/canonical/snapcraft/issues/4439
-          SNAPCRAFT_HAS_TTY: "true"
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.store-credentials }} 
         run: |
-          yes | snapcraft promote ${{ inputs.snap-name }} \
+          snapcraft promote ${{ inputs.snap-name }} --yes \
             --from-channel "${{ inputs.store-track }}/edge" \
             --to-channel   "${{ inputs.store-track }}/beta"
