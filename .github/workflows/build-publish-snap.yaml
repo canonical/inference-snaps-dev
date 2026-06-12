@@ -29,7 +29,7 @@ on:
 
 jobs:
   build:
-    name: Build & publish (${{ fromJSON(inputs.runner) }})
+    name: Build & publish (${{ inputs.runner }})
     runs-on: ${{ fromJSON(inputs.runner) }}
 
     steps:
