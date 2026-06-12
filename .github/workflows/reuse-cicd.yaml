@@ -49,7 +49,7 @@ jobs:
       matrix:
         runner: ${{ fromJSON(inputs.build-runner) }}
     with:
-      runner: "${{ matrix.runner }}"
+      runner: "${{ toJSON(matrix.runner) }}"
       init-build-script: ${{ inputs.build-init-script }}
       publish-channel: ${{ inputs.store-track }}/edge
     secrets:
