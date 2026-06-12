@@ -3,23 +3,15 @@ name: Snap CICD
 on:
   workflow_call:
     inputs:
-      build-runner-amd64:
+      build-runner:
         description: |
-          The runner used to build the amd64 snap.
+          JSON array containing runner configurations for each architecture.
           
-          The input should be a single-quoted JSON string or array. For example:
-          - '"ubuntu-latest"' for a single label
-          - '[ "self-hosted", "amd64", "large" ]' for multiple labels
-        required: true
-        type: string
-
-      build-runner-arm64:
-        description: |
-          The runner used to build the arm64 snap.  
-
-          The input should be a single-quoted JSON string or array. For example:
-          - '"ubuntu-latest"' for a single label
-          - '[ "self-hosted", "arm64", "large" ]' for multiple labels   
+          The input should be a JSON array of runner configurations. For example:
+          - '[["self-hosted", "amd64"], ["self-hosted", "arm64"]]'
+          - '["ubuntu-latest", "ubuntu-latest"]' for single label per architecture
+          
+          The input must be quoted and passed as a string.
         required: true
         type: string
 
@@ -55,11 +47,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner:
-          - ${{ toJSON(inputs.build-runner-arm64) }}
-          - ${{ toJSON(inputs.build-runner-amd64) }}
+        runner: ${{ fromJSON(inputs.build-runner) }}
     with:
-      runner: "${{ matrix.runner }}"
+      runner: "${{ toJSON(matrix.runner) }}"
       init-build-script: ${{ inputs.build-init-script }}
       publish-channel: ${{ inputs.store-track }}/edge
     secrets:
