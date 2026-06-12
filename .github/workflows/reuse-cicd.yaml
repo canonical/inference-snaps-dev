@@ -25,7 +25,7 @@ on:
         required: true
         type: string
 
-      engine:
+      smoke-test-engine:
         description: Engine to validate during smoke tests
         required: true
         type: string
@@ -79,7 +79,7 @@ jobs:
         uses: canonical/inference-snaps-dev/.github/actions/smoke-test@v2
         with:
           snap-name: ${{ inputs.snap-name }}
-          engine: ${{ inputs.engine }}
+          engine: ${{ inputs.smoke-test-engine }}
   
   promote-beta:
     needs: [smoke-test]
