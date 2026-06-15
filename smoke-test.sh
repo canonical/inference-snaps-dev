@@ -150,13 +150,13 @@ check_port_listening() {
 # =============================================================================
 
 test_endpoint_models() {
-  local base_url="$1"
   local timeout_seconds=300  # 5 minutes
   local retry_delay=10
   local connection_timeout=60
   local start_time
   start_time=$(date +%s)
 
+  local base_url=$("$snap_name" status --format=json | jq -r '.endpoints.openai' )
   local endpoint="$base_url/models"
 
   log_info "Testing OpenAI models endpoint."
@@ -173,6 +173,8 @@ test_endpoint_models() {
       return 0
     fi
 
+    # TODO: warn or error if the model name doesn't match the name in status
+
     current_time=$(date +%s)
     elapsed=$((current_time - start_time))
 
@@ -186,12 +188,13 @@ test_endpoint_models() {
 }
 
 test_endpoint_chat_completion() {
-  local base_url="$1"
-  local model_name="$2"
   local max_retries=5
   local retry_delay=60
   local connection_timeout=60
   local attempt=1
+
+  local base_url=$("$snap_name" status --format=json | jq -r '.endpoints.openai' )
+  local model_name=$("$snap_name" status --format=json | jq -r '.model.name')
   local endpoint="$base_url/chat/completions"
 
   log_info "Testing OpenAI chat completions endpoints."
@@ -261,13 +264,10 @@ EOF
 }
 
 run_api_tests() {
-  local base_url="$1"
-  local model_name="$2"
-
   log_section "API Endpoint Tests"
 
-  test_endpoint_models "$base_url"
-  test_endpoint_chat_completion "$base_url" "$model_name"
+  test_endpoint_models
+  test_endpoint_chat_completion
 }
 
 # =============================================================================
@@ -286,19 +286,19 @@ test_configuration_management() {
   local snap_name="$1"
   local default_port
 
-  log_section "Configuration Management Tests"
+  log_section "Configuration Tests"
 
-  log_info "Checking all configs (snap get $snap_name)..."
+  log_info "Print internal configs (snap get $snap_name)..."
   snap get "$snap_name" -d
 
-  log_info "Checking all configs ($snap_name get)..."
+  log_info "Print configs ($snap_name get)..."
   "$snap_name" get
 
   log_info "Getting specific config..."
   default_port=$("$snap_name" get http.port)
   echo "$default_port"
 
-  log_info "Testing configuration change..."
+  log_info "Testing config change..."
   "$snap_name" set http.port=9999 --assume-yes
 
   # Verify config change persisted
@@ -307,9 +307,9 @@ test_configuration_management() {
   if (("$port" != 9999)); then
     exit_error "Config change did not persist."
   fi
-  log_info "✓ Configuration change persisted successfully"
+  log_info "✓ Config change persisted successfully"
 
-  log_info "Reverting configuration change..."
+  log_info "Reverting config change..."
   "$snap_name" set http.port="$default_port" --assume-yes
 }
 
@@ -410,14 +410,9 @@ main() {
   log_info "Running tests against snap: $snap_name"
   log_info "Selected engine: $target_engine"
 
-  # Get server settings
+  # Pre-flight checks
   local server_port
   server_port=$("$snap_name" get http.port)
-  local base_url=$("$snap_name" status --format=json | jq -r '.endpoints.openai' )
-  local model_name
-  model_name=$("$snap_name" status --format=json | jq -r '.model.name')
-
-  # Pre-flight checks
   check_port_listening "$server_port"
 
   # Run all test suites
@@ -426,7 +421,7 @@ main() {
   test_engine_listing "$snap_name"
   test_automatic_engine_selection "$snap_name"
   test_engine_switching "$snap_name" "$target_engine"
-  run_api_tests "$base_url" "$model_name"
+  run_api_tests
 
   log_section "All Smoke Tests Completed Successfully!"
 }
