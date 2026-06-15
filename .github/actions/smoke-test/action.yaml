@@ -7,32 +7,15 @@ inputs:
   engine:
     description: Engine to validate during smoke tests
     required: true
-  curl-timeout:
-    description: CURL timeout in seconds
-    required: false
-    default: "10"
-  max-retries:
-    description: Max retries for retry logic in smoke tests
-    required: false
-    default: "50"
-  retry-delay:
-    description: Delay between retries in seconds
-    required: false
-    default: "10"
 
 runs:
   using: composite
   steps:
     - name: Run smoke tests
       shell: bash
-      env:
-        CURL_TIMEOUT: ${{ inputs.curl-timeout }}
-        MAX_RETRIES: ${{ inputs.max-retries }}
-        RETRY_DELAY: ${{ inputs.retry-delay }}
       run: |
         set -euo pipefail
 
         action_repo_root="$(realpath "$GITHUB_ACTION_PATH/../../..")"
 
-        # -E tells sudo to preserve the caller's environment variables when running the command
-        sudo -E "$action_repo_root/smoke-test.sh" "${{ inputs.snap-name }}" "${{ inputs.engine }}"
+        sudo "$action_repo_root/smoke-test.sh" "${{ inputs.snap-name }}" "${{ inputs.engine }}"

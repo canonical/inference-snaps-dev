@@ -85,11 +85,10 @@ jobs:
           sudo snap install ${{ inputs.snap-name }} --channel ${{ inputs.store-track }}/edge
   
       - name: Run smoke tests
-        uses: canonical/inference-snaps-dev/.github/actions/smoke-test@v2
+        uses: canonical/inference-snaps-dev/.github/actions/smoke-test@extend-smoke-test-config # temp. change to v2
         with:
           snap-name: ${{ inputs.snap-name }}
           engine: ${{ inputs.smoke-test-engine }}
-          curl-timeout: "60"
   
   promote-beta:
     needs: [smoke-test]
