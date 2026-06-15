@@ -75,8 +75,23 @@ log_section() {
   echo -e "\n${BLUE}=== $1 ===${NC}"
 }
 
+log_debugging_info() {
+  log_section "Snap logs"
+  snap logs -n all "$snap_name"
+  
+  log_section "Machine info"
+  "$snap_name" show-machine
+}
+
 exit_error() {
   log_error "$1"
+
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::group:: Debugging Information"
+    log_debugging_info
+    echo "::endgroup::"
+  fi
+
   exit 1
 }
 
@@ -182,7 +197,7 @@ test_endpoint_models() {
       log_warning "Endpoint failed; retrying in ${retry_delay}s"
       sleep "$retry_delay"
     else
-      exit_error "✗ $endpoint: Fails after $timeout_seconds seconds"
+      exit_error "✗ $endpoint: Failed after $timeout_seconds seconds"
     fi
   done
 }
@@ -259,7 +274,7 @@ EOF
     ((attempt++))
   done
 
-  exit_error "✗ $endpoint: Fail after $max_retries attempts"
+  exit_error "✗ $endpoint: Failed after $max_retries attempts"
 
 }
 

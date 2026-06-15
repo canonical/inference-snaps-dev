@@ -18,4 +18,4 @@ runs:
 
         action_repo_root="$(realpath "$GITHUB_ACTION_PATH/../../..")"
 
-        sudo "$action_repo_root/smoke-test.sh" "${{ inputs.snap-name }}" "${{ inputs.engine }}"
+        sudo -E "$action_repo_root/smoke-test.sh" "${{ inputs.snap-name }}" "${{ inputs.engine }}"
