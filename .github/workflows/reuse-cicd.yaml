@@ -53,21 +53,21 @@ on:
 
 
 jobs:
-  # build-edge:
-  #   uses: ./.github/workflows/build-publish-snap.yaml
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       runner: ${{ fromJSON(inputs.build-runner) }}
-  #   with:
-  #     runner: "${{ toJSON(matrix.runner) }}"
-  #     init-build-script: ${{ inputs.build-init-script }}
-  #     publish-channel: ${{ inputs.store-track }}/edge
-  #   secrets:
-  #     store-credentials: ${{ secrets.store-credentials }} 
+  build-edge:
+    uses: ./.github/workflows/build-publish-snap.yaml
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: ${{ fromJSON(inputs.build-runner) }}
+    with:
+      runner: "${{ toJSON(matrix.runner) }}"
+      init-build-script: ${{ inputs.build-init-script }}
+      publish-channel: ${{ inputs.store-track }}/edge
+    secrets:
+      store-credentials: ${{ secrets.store-credentials }} 
 
   smoke-test:
-    # needs: [build-edge]
+    needs: [build-edge]
     strategy:
       fail-fast: false
       matrix:
@@ -85,7 +85,7 @@ jobs:
           sudo snap install ${{ inputs.snap-name }} --channel ${{ inputs.store-track }}/edge
   
       - name: Run smoke tests
-        uses: canonical/inference-snaps-dev/.github/actions/smoke-test@extend-smoke-test-config # temp. change to v2
+        uses: canonical/inference-snaps-dev/.github/actions/smoke-test@v2
         with:
           snap-name: ${{ inputs.snap-name }}
           engine: ${{ inputs.smoke-test-engine }}
