@@ -97,10 +97,10 @@ exit_error() {
 
 usage() {
   echo "Usage: $0 <inference-snap-name> <engine>"
-  echo "Runs smoke tests for one specified engine against an inference snap."
+  echo "Runs smoke tests for a specific engine against an inference snap."
   echo
   echo "Example:"
-  echo "./$(basename "$0") deepseek-r1 cpu-tiny"
+  echo "./$(basename "$0") gemma4 cpu"
 }
 
 # =============================================================================
@@ -342,7 +342,7 @@ test_engine_listing() {
   mapfile -t avail_engines < <("$snap_name" list-engines --format=json | jq -r '.engines[].name' | sort)
   echo -e "Available engines:\n${avail_engines[*]}"
 
-  mapfile -t src_engines < <(find "/snap/$AI_SNAP_NAME/current/engines/" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
+  mapfile -t src_engines < <(find "/snap/$snap_name/current/engines/" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
   echo -e "Declared engines:\n${src_engines[*]}"
 
   if [[ ${#avail_engines[@]} -ne ${#src_engines[@]} ]]; then
@@ -452,8 +452,8 @@ check_for_jq
 validate_arguments "$@"
 
 # Extract arguments
-AI_SNAP_NAME="$1"
-MODEL_ENGINE="$2"
+SNAP_NAME="$1"
+ENGINE="$2"
 
 # Run main function
-main "$AI_SNAP_NAME" "$MODEL_ENGINE"
+main "$SNAP_NAME" "$ENGINE"
