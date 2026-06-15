@@ -9,7 +9,7 @@ on:
           
           The input should be a JSON array of runner configurations. For example:
           - '[["self-hosted", "amd64"], ["self-hosted", "arm64"]]'
-          - '["ubuntu-latest", "ubuntu-latest"]' for single label per architecture
+          - '["ubuntu-24.04", "ubuntu-24.04-arm"]' for single label per architecture
           
           The input must be quoted and passed as a string.
         required: true
@@ -24,6 +24,17 @@ on:
         description: Name of the snap to build and publish
         required: true
         type: string
+
+      smoke-test-runner:
+        description: |
+          JSON array containing runner configurations for each architecture for smoke testing.  
+          The input should be a JSON array of runner configurations. For example:
+          - '[["self-hosted", "amd64"], ["self-hosted", "arm64"]]'
+          - '["ubuntu-24.04", "ubuntu-24.04-arm"]' for single label per architecture
+          The input must be quoted and passed as a string.
+        required: false
+        type: string
+        default: '["ubuntu-24.04", "ubuntu-24.04-arm"]'
 
       smoke-test-engine:
         description: Engine to validate during smoke tests
@@ -42,27 +53,25 @@ on:
 
 
 jobs:
-  build-edge:
-    uses: ./.github/workflows/build-publish-snap.yaml
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: ${{ fromJSON(inputs.build-runner) }}
-    with:
-      runner: "${{ toJSON(matrix.runner) }}"
-      init-build-script: ${{ inputs.build-init-script }}
-      publish-channel: ${{ inputs.store-track }}/edge
-    secrets:
-      store-credentials: ${{ secrets.store-credentials }} 
+  # build-edge:
+  #   uses: ./.github/workflows/build-publish-snap.yaml
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       runner: ${{ fromJSON(inputs.build-runner) }}
+  #   with:
+  #     runner: "${{ toJSON(matrix.runner) }}"
+  #     init-build-script: ${{ inputs.build-init-script }}
+  #     publish-channel: ${{ inputs.store-track }}/edge
+  #   secrets:
+  #     store-credentials: ${{ secrets.store-credentials }} 
 
   smoke-test:
-    needs: [build-edge]
+    # needs: [build-edge]
     strategy:
       fail-fast: false
       matrix:
-        runner:
-          - ubuntu-24.04
-          - ubuntu-24.04-arm
+        runner: ${{ fromJSON(inputs.smoke-test-runner) }}
     runs-on: ${{ matrix.runner }}
     
     steps:
@@ -80,6 +89,7 @@ jobs:
         with:
           snap-name: ${{ inputs.snap-name }}
           engine: ${{ inputs.smoke-test-engine }}
+          curl-timeout: "60"
   
   promote-beta:
     needs: [smoke-test]
