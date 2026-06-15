@@ -18,4 +18,5 @@ runs:
 
         action_repo_root="$(realpath "$GITHUB_ACTION_PATH/../../..")"
 
-        sudo -E "$action_repo_root/smoke-test.sh" "${{ inputs.snap-name }}" "${{ inputs.engine }}"
+        sudo --preserve-env=GITHUB_ACTIONS \
+          "$action_repo_root/smoke-test.sh" "${{ inputs.snap-name }}" "${{ inputs.engine }}"
