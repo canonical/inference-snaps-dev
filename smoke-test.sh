@@ -48,11 +48,6 @@ trap 'error_handler ${LINENO} ${BASH_LINENO[0]} "$BASH_COMMAND" "${FUNCNAME[1]}"
 # CONFIGURATION AND GLOBALS
 # =============================================================================
 
-# Configuration defaults (can be overridden by environment variables)
-: "${CURL_TIMEOUT:=10}"
-: "${MAX_RETRIES:=50}"
-: "${RETRY_DELAY:=10}"
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -80,22 +75,32 @@ log_section() {
   echo -e "\n${BLUE}=== $1 ===${NC}"
 }
 
+log_debugging_info() {
+  log_section "Snap logs"
+  snap logs -n all "$snap_name"
+  
+  log_section "Machine info"
+  "$snap_name" show-machine
+}
+
 exit_error() {
   log_error "$1"
+
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    echo "::group:: Debugging Information"
+    log_debugging_info
+    echo "::endgroup::"
+  fi
+
   exit 1
 }
 
 usage() {
   echo "Usage: $0 <inference-snap-name> <engine>"
-  echo "Runs smoke tests for one specified engine against an inference snap."
-  echo
-  echo "Environment variables (optional overrides):"
-  echo "  CURL_TIMEOUT"
-  echo "  MAX_RETRIES"
-  echo "  RETRY_DELAY"
+  echo "Runs smoke tests for a specific engine against an inference snap."
   echo
   echo "Example:"
-  echo "CURL_TIMEOUT=40 MAX_RETRIES=10 ./$(basename "$0") deepseek-r1 cpu-tiny"
+  echo "./$(basename "$0") gemma4 cpu"
 }
 
 # =============================================================================
@@ -129,70 +134,85 @@ validate_arguments() {
 
 check_port_listening() {
   local port="$1"
-  local max_retries="$MAX_RETRIES"
-  local retry_delay="$RETRY_DELAY"
-  local attempt=1
+  local timeout_seconds=300
+  local retry_delay=10
+  local start_time
+  start_time=$(date +%s)
 
-  while [[ $attempt -le $max_retries ]]; do
-    log_info "Attempt $attempt/$max_retries: Checking whether port $port is listening"
+  while true; do
+    local current_time
+    current_time=$(date +%s)
+    local elapsed=$((current_time - start_time))
+
+    log_info "Checking whether port $port is listening (${elapsed}/${timeout_seconds}s)"
 
     if ss -tuln | grep -q ":$port "; then
-      log_info "Port $port is listening"
+      log_info "✓ Port $port is listening"
       return 0
     fi
 
-    if [[ $attempt -lt $max_retries ]]; then
-      log_warning "Port $port is not listening yet; retrying in ${retry_delay}s"
+    if [[ $elapsed -lt $timeout_seconds ]]; then
+      log_warning "Port $port not listening; retrying in ${retry_delay}s"
       sleep "$retry_delay"
+    else
+      exit_error "✗ Time out after ${timeout_seconds}s waiting for port $port to listen."
     fi
-
-    ((attempt++))
   done
-
-  exit_error "Port $port is not listening after $max_retries attempts. Is the snap running?"
 }
 
 # =============================================================================
 # HTTP API TESTING FUNCTIONS
 # =============================================================================
 
-test_endpoint() {
-  local endpoint="$1"
-  local description="$2"
-  local max_retries="$MAX_RETRIES"
-  local retry_delay="$RETRY_DELAY"
-  local attempt=1
+test_endpoint_models() {
+  local timeout_seconds=300  # 5 minutes
+  local retry_delay=10
+  local connection_timeout=60
+  local start_time
+  start_time=$(date +%s)
 
-  log_info "Testing $description: $endpoint"
+  local base_url=$("$snap_name" status --format=json | jq -r '.endpoints.openai' )
+  local endpoint="$base_url/models"
 
-  while [[ $attempt -le $max_retries ]]; do
-    log_info "Attempt $attempt/$max_retries: $description"
+  log_info "Testing OpenAI models endpoint."
 
-    if curl --retry 0 --fail-with-body --connect-timeout "$CURL_TIMEOUT" "$endpoint"; then
-      echo # Add a newline after the curl output
-      log_info "✓ $description: Pass"
+  while true; do
+    local current_time
+    current_time=$(date +%s)
+    local elapsed=$((current_time - start_time))
+
+    log_info "Checking $endpoint ($elapsed/${timeout_seconds}s)"
+
+    if curl --retry 0 --fail-with-body --write-out '\n' --connect-timeout $connection_timeout "$endpoint"; then
+      log_info "✓ $endpoint: Pass"
       return 0
     fi
 
-    if [[ $attempt -lt $max_retries ]]; then
-      log_warning "$description failed; retrying in ${retry_delay}s"
+    # TODO: warn or error if the model name doesn't match the name in status
+
+    current_time=$(date +%s)
+    elapsed=$((current_time - start_time))
+
+    if [[ $elapsed -lt $timeout_seconds ]]; then
+      log_warning "Endpoint failed; retrying in ${retry_delay}s"
       sleep "$retry_delay"
+    else
+      exit_error "✗ $endpoint: Failed after $timeout_seconds seconds"
     fi
-
-    ((attempt++))
   done
-
-  exit_error "✗ $description: Fail after $max_retries attempts"
 }
 
-test_chat_completion() {
-  local base_url="$1"
-  local model_name="$2"
-  local max_retries=3
-  local retry_delay=20
+test_endpoint_chat_completion() {
+  local max_retries=5
+  local retry_delay=60
+  local connection_timeout=60
   local attempt=1
 
-  log_info "Testing chat completion endpoint..."
+  local base_url=$("$snap_name" status --format=json | jq -r '.endpoints.openai' )
+  local model_name=$("$snap_name" status --format=json | jq -r '.model.name')
+  local endpoint="$base_url/chat/completions"
+
+  log_info "Testing OpenAI chat completions endpoints."
 
   local system_message="You are a helpful assistant."
   local prompt="Hello!"
@@ -213,24 +233,24 @@ test_chat_completion() {
 EOF
   )
 
-  echo -e "Chat payload:\n$json_body"
-
   local compact_json_body
   compact_json_body=$(echo "$json_body" | jq -c .)
 
   local api_response
   while [[ $attempt -le $max_retries ]]; do
-    log_info "Attempt $attempt/$max_retries: Chat completion"
+    log_info "Checking $endpoint ($attempt/$max_retries)"
 
     set +e
     set -x # log the curl command for debugging
     api_response=$(
-      curl -X POST "$base_url/chat/completions" \
+      curl -X POST "$endpoint" \
         -H "Content-Type: application/json" \
-        --max-time "$CURL_TIMEOUT" \
-        --retry 0 \
         -d "$compact_json_body" \
+        --connect-timeout $connection_timeout \
+        --max-time 600 \
+        --retry 0 \
         --fail-with-body \
+        --write-out '\n' \
         2>/dev/null
     )
     set +x
@@ -242,7 +262,7 @@ EOF
         exit_error "Empty response from server"
       fi
 
-      log_info "✓ Chat completion: OK"
+      log_info "✓ $endpoint: Pass"
       return 0
     fi
 
@@ -254,21 +274,15 @@ EOF
     ((attempt++))
   done
 
-  exit_error "Chat completion failed after $max_retries attempts (may indicate service issues)"
+  exit_error "✗ $endpoint: Failed after $max_retries attempts"
 
 }
 
 run_api_tests() {
-  local base_url="$1"
-  local model_name="$2"
-
   log_section "API Endpoint Tests"
 
-  # Test models endpoint
-  test_endpoint "$base_url/models" "List available models"
-
-  # Test chat completion
-  test_chat_completion "$base_url" "$model_name"
+  test_endpoint_models
+  test_endpoint_chat_completion
 }
 
 # =============================================================================
@@ -287,21 +301,19 @@ test_configuration_management() {
   local snap_name="$1"
   local default_port
 
-  log_section "Configuration Management Tests"
+  log_section "Configuration Tests"
 
-  log_info "Checking all configs (snap get)..."
+  log_info "Print internal configs (snap get $snap_name)..."
   snap get "$snap_name" -d
 
-  log_info "Checking all configs (snap command)..."
+  log_info "Print configs ($snap_name get)..."
   "$snap_name" get
 
-  log_info "Getting config subset..."
-  default_port=$("$snap_name" get http.port)
-
   log_info "Getting specific config..."
-  "$snap_name" get http.port
+  default_port=$("$snap_name" get http.port)
+  echo "$default_port"
 
-  log_info "Testing configuration change..."
+  log_info "Testing config change..."
   "$snap_name" set http.port=9999 --assume-yes
 
   # Verify config change persisted
@@ -310,9 +322,9 @@ test_configuration_management() {
   if (("$port" != 9999)); then
     exit_error "Config change did not persist."
   fi
-  log_info "✓ Configuration change persisted successfully"
+  log_info "✓ Config change persisted successfully"
 
-  log_info "Reverting configuration change..."
+  log_info "Reverting config change..."
   "$snap_name" set http.port="$default_port" --assume-yes
 }
 
@@ -330,7 +342,7 @@ test_engine_listing() {
   mapfile -t avail_engines < <("$snap_name" list-engines --format=json | jq -r '.engines[].name' | sort)
   echo -e "Available engines:\n${avail_engines[*]}"
 
-  mapfile -t src_engines < <(find "/snap/$AI_SNAP_NAME/current/engines/" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
+  mapfile -t src_engines < <(find "/snap/$snap_name/current/engines/" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
   echo -e "Declared engines:\n${src_engines[*]}"
 
   if [[ ${#avail_engines[@]} -ne ${#src_engines[@]} ]]; then
@@ -351,17 +363,6 @@ test_engine_listing() {
   done
 }
 
-use_engine_with_retry() {
-  local snap_name="$1"
-  local engine="$2"
-
-  log_info "Switching to engine: $engine"
-
-  "$snap_name" use-engine "$engine" --assume-yes
-  
-  log_info "✓ Successfully switched to engine: $engine"
-}
-
 get_curr_engine() {
   local snap_name="$1"
   "$snap_name" status --format=json | jq -r '.engine'
@@ -373,14 +374,14 @@ test_engine_switching() {
 
   log_section "Engine Switching Tests"
 
-  log_info "Checking current engine status..."
+  log_info "Checking status..."
   "$snap_name" status
 
   log_info "Showing current engine..."
   "$snap_name" show-engine
 
-  log_info "Testing engine switch with retry logic..."
-  if ! use_engine_with_retry "$snap_name" "$target_engine"; then
+  log_info "Testing engine switch..."
+  if ! "$snap_name" use-engine "$target_engine" --assume-yes; then
     exit_error "Failed to switch to engine: $target_engine"
   fi
 
@@ -395,7 +396,7 @@ test_engine_switching() {
 
 test_automatic_engine_selection() {
   local snap_name="$1"
-  log_section "Automatic engine selection test"
+  log_section "Automatic Engine Selection Test"
 
   log_info "Running: $snap_name use-engine --auto"
   engine=$("$snap_name" use-engine --auto --assume-yes | grep -oP 'Selected engine: \K\S+')
@@ -410,7 +411,6 @@ test_automatic_engine_selection() {
   if [[ "$check" != "$engine" ]]; then
     exit_error "Automatic engine selection failed: status shows $check but expected $engine"
   fi
-
 }
 
 # =============================================================================
@@ -425,23 +425,18 @@ main() {
   log_info "Running tests against snap: $snap_name"
   log_info "Selected engine: $target_engine"
 
-  # Get server settings
+  # Pre-flight checks
   local server_port
   server_port=$("$snap_name" get http.port)
-  local base_url=$("$snap_name" status --format=json | jq -r '.endpoints.openai' )
-  local model_name
-  model_name=$("$snap_name" status --format=json | jq -r '.model.name')
-
-  # Pre-flight checks
   check_port_listening "$server_port"
 
   # Run all test suites
-  run_api_tests "$base_url" "$model_name"
   test_snap_installation "$snap_name"
   test_configuration_management "$snap_name"
   test_engine_listing "$snap_name"
   test_automatic_engine_selection "$snap_name"
   test_engine_switching "$snap_name" "$target_engine"
+  run_api_tests
 
   log_section "All Smoke Tests Completed Successfully!"
 }
@@ -457,8 +452,8 @@ check_for_jq
 validate_arguments "$@"
 
 # Extract arguments
-AI_SNAP_NAME="$1"
-MODEL_ENGINE="$2"
+SNAP_NAME="$1"
+ENGINE="$2"
 
 # Run main function
-main "$AI_SNAP_NAME" "$MODEL_ENGINE"
+main "$SNAP_NAME" "$ENGINE"
