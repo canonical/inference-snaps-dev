@@ -1,6 +1,4 @@
 {
-  // Renovate configuration for Canonical inference snaps
-  // Shared across gemma4-snap, nemotron-3-nano-snap, and other inference snap projects
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
