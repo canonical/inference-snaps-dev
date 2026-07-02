@@ -57,6 +57,9 @@ on:
       store-credentials:
         description: Snap Store credentials for publishing PR builds
         required: true
+      github-token:
+        description: GitHub token used by build pre-check and label operations
+        required: true
 
 jobs:
   remove-trigger-labels:
@@ -78,7 +81,7 @@ jobs:
         name: Check for existing successful build
         uses: canonical/inference-snaps-testing/.github/actions/build-pre-check@v1
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.github-token }}
         with:
           workflow-name: ${{ github.workflow }}
 
