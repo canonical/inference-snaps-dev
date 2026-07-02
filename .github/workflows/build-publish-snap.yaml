@@ -33,10 +33,9 @@ jobs:
     runs-on: ${{ fromJSON(inputs.runner) }}
 
     steps:
-      # Update snapd as we need a recent one to support components
-      - name: Update snapd
+      - name: Refresh/Install snapd
         run: |
-          sudo snap refresh snapd
+          sudo snap refresh snapd || sudo snap install snapd
 
       - name: Install Git LFS
         run: sudo apt-get update && sudo apt-get install -y git-lfs
@@ -44,8 +43,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          # Prevent usage of simulated merge commit of PR
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # This shouldn't be working since the event isn't a pull_request one at this depth
+          # # Prevent usage of simulated merge commit of PR
+          # ref: ${{ github.event.pull_request.head.sha || github.sha }}
           lfs: true
           submodules: true
 

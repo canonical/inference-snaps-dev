@@ -76,7 +76,9 @@ jobs:
     with:
       label: ${{ inputs.trigger-label }}
 
+  # TODO: drop this job and make the build-publish job detect if it needs to build and publish
   build-pre-check:
+    name: Check for existing build
     if: ${{ inputs.trigger-label == 'trigger-tests' }}
     runs-on: ubuntu-latest
     outputs:
@@ -100,7 +102,7 @@ jobs:
         runner: ${{ fromJSON(inputs.build-runners) }}
     with:
       runner: "${{ toJSON(matrix.runner) }}"
-      init-build-script: download-models.sh # Replace this with 'make download-models'
+      init-build-script: download-models.sh # TODO: Replace this with a standard make recipe for model downloads
       publish-channel: ${{ inputs.publish-channel-prefix }}${{ inputs.pr-number }}
     secrets:
       store-credentials: ${{ secrets.store-credentials }}
