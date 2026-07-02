@@ -1,0 +1,122 @@
+# This workflow is designed to be called by another workflow on pull request labels.
+# It performs build or build+test depending on the label that triggered it.
+
+name: CI
+
+on:
+  workflow_call:
+    inputs:
+      trigger-label:
+        description: Label that triggered the workflow
+        required: true
+        type: string
+      pr-number:
+        description: Pull request number
+        required: true
+        type: string
+      build-runners:
+        description: |
+          JSON array containing runner configurations for builds.
+          Example:
+          - '["ubuntu-24.04", "ubuntu-24.04-arm"]'
+          - '[["self-hosted", "amd64"], ["self-hosted", "arm64"]]'
+        required: false
+        type: string
+        default: '["ubuntu-24.04", "ubuntu-24.04-arm"]'
+      publish-channel-prefix:
+        description: Prefix for PR publish channel
+        required: false
+        type: string
+        default: latest/edge/pr-
+      snap-name:
+        description: Snap name for test jobs
+        required: true
+        type: string
+      test-chat-tps:
+        description: Enable chat TPS test
+        required: false
+        type: boolean
+        default: true
+      test-image-prompt:
+        description: Enable image prompt test
+        required: false
+        type: boolean
+        default: true
+      test-jobs-matrix:
+        description: |
+          JSON array of test job objects
+          Example:
+          [
+            {"job-queue":"maas-systemtests-amd64","provision-data":"distro: noble","select-engine":"cpu"},
+            {"job-queue":"anbox-nvidia-amd64","provision-data":"distro: noble","install-nvidia-driver-version":595,"select-engine":"nvidia-gpu","expected-tps":9.4}
+          ]
+        required: false
+        type: string
+        default: '["ubuntu-24.04", "ubuntu-24.04-arm"]'
+    secrets:
+      store-credentials:
+        description: Snap Store credentials for publishing PR builds
+        required: true
+
+jobs:
+  remove-trigger-labels:
+    if: ${{ inputs.trigger-label == 'trigger-build' || inputs.trigger-label == 'trigger-tests' }}
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/remove-label.yaml
+    with:
+      label: ${{ inputs.trigger-label }}
+
+  build-pre-check:
+    if: ${{ inputs.trigger-label == 'trigger-tests' }}
+    runs-on: ubuntu-latest
+    outputs:
+      build-success: ${{ steps.build-pre-check.outputs.build-success }}
+    steps:
+      - id: build-pre-check
+        name: Check for existing successful build
+        uses: canonical/inference-snaps-testing/.github/actions/build-pre-check@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          workflow-name: ${{ github.workflow }}
+
+  build-and-publish:
+    needs: [build-pre-check]
+    if: ${{ always() && (inputs.trigger-label == 'trigger-build' || (inputs.trigger-label == 'trigger-tests' && needs.build-pre-check.outputs.build-success == 'false')) }}
+    uses: ./.github/workflows/build-publish-snap.yaml
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: ${{ fromJSON(inputs.build-runners) }}
+    with:
+      runner: "${{ toJSON(matrix.runner) }}"
+      init-build-script: download-models.sh # Replace this with 'make download-models'
+      publish-channel: ${{ inputs.publish-channel-prefix }}${{ inputs.pr-number }}
+    secrets:
+      store-credentials: ${{ secrets.store-credentials }}
+
+  test:
+    needs: [build-and-publish]
+    if: ${{ always() && inputs.trigger-label == 'trigger-tests' && (needs.build-and-publish.result == 'success' || needs.build-and-publish.result == 'skipped') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        jobs: ${{ fromJSON(inputs.test-jobs-matrix) }}
+    uses: canonical/inference-snaps-testing/.github/workflows/test-snap.yaml@v1
+    secrets: inherit
+    with:
+      job-queue: ${{ matrix.jobs.job-queue }}
+      provision-data: ${{ matrix.jobs.provision-data }}
+      snap-name: ${{ inputs.snap-name }}
+      snap-channel: ${{ inputs.publish-channel-prefix }}${{ inputs.pr-number }}
+      install-nvidia-driver-version: ${{ matrix.jobs.install-nvidia-driver-version }}
+      install-intel-npu-driver: ${{ matrix.jobs.install-intel-npu-driver == true }}
+      snap-connections: ${{ matrix.jobs.snap-connections }}
+      expected-engine: ${{ matrix.jobs.expected-engine }}
+      select-engine: ${{ matrix.jobs.select-engine }}
+      test-chat-tps: ${{ inputs.test-chat-tps }}
+      expected-tps: ${{ matrix.jobs.expected-tps }}
+      test-image-prompt: ${{ inputs.test-image-prompt }}
+      devmode: ${{ matrix.jobs.devmode == true }}
