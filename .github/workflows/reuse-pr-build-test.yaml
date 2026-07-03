@@ -55,9 +55,8 @@ on:
             {"job-queue":"maas-systemtests-amd64","provision-data":"distro: noble","select-engine":"cpu"},
             {"job-queue":"anbox-nvidia-amd64","provision-data":"distro: noble","install-nvidia-driver-version":595,"select-engine":"nvidia-gpu","expected-tps":9.4}
           ]
-        required: false
+        required: true
         type: string
-        default: '["ubuntu-24.04", "ubuntu-24.04-arm"]'
     secrets:
       store-credentials:
         description: Snap Store credentials for publishing PR builds
@@ -68,6 +67,7 @@ on:
 
 jobs:
   remove-trigger-labels:
+    # Run only for trigger labels, not any other label
     if: ${{ inputs.trigger-label == 'trigger-build' || inputs.trigger-label == 'trigger-tests' }}
     permissions:
       contents: read
@@ -79,7 +79,8 @@ jobs:
   # TODO: drop this job and make the build-publish job detect if it needs to build and publish
   build-pre-check:
     name: Check for existing build
-    if: ${{ inputs.trigger-label == 'trigger-tests' }}
+    # Run only for trigger labels, not any other label
+    if: ${{ inputs.trigger-label == 'trigger-build' || inputs.trigger-label == 'trigger-tests' }}
     runs-on: ubuntu-latest
     outputs:
       build-success: ${{ steps.build-pre-check.outputs.build-success }}
@@ -94,7 +95,9 @@ jobs:
 
   build-and-publish:
     needs: [build-pre-check]
-    if: ${{ !cancelled() && (inputs.trigger-label == 'trigger-build' || (inputs.trigger-label == 'trigger-tests' && needs.build-pre-check.outputs.build-success == 'false')) }}
+    # Run only for trigger labels, not any other label
+    # Run only if not already built successfully
+    if: ${{ (inputs.trigger-label == 'trigger-build' || inputs.trigger-label == 'trigger-tests') && needs.build-pre-check.outputs.build-success == 'false' }}
     uses: ./.github/workflows/build-publish-snap.yaml
     strategy:
       fail-fast: false
@@ -109,7 +112,10 @@ jobs:
 
   test:
     needs: [build-and-publish]
-    if: ${{ !cancelled() && inputs.trigger-label == 'trigger-tests' && (needs.build-and-publish.result == 'success' || needs.build-and-publish.result == 'skipped') }}
+    # Run only for trigger-tests label, not any other label
+    # Run even if previous job was skipped (!cancelled)
+    # Run only if build hasn't failed
+    if: ${{ inputs.trigger-label == 'trigger-tests' && !cancelled() && needs.build-and-publish.result != 'failed' }}
     strategy:
       fail-fast: false
       matrix:
