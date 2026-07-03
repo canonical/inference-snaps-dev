@@ -94,7 +94,7 @@ jobs:
 
   build-and-publish:
     needs: [build-pre-check]
-    if: ${{ always() && (inputs.trigger-label == 'trigger-build' || (inputs.trigger-label == 'trigger-tests' && needs.build-pre-check.outputs.build-success == 'false')) }}
+    if: ${{ !cancelled() && (inputs.trigger-label == 'trigger-build' || (inputs.trigger-label == 'trigger-tests' && needs.build-pre-check.outputs.build-success == 'false')) }}
     uses: ./.github/workflows/build-publish-snap.yaml
     strategy:
       fail-fast: false
@@ -109,7 +109,7 @@ jobs:
 
   test:
     needs: [build-and-publish]
-    if: ${{ always() && inputs.trigger-label == 'trigger-tests' && (needs.build-and-publish.result == 'success' || needs.build-and-publish.result == 'skipped') }}
+    if: ${{ !cancelled() && inputs.trigger-label == 'trigger-tests' && (needs.build-and-publish.result == 'success' || needs.build-and-publish.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
