@@ -43,9 +43,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          # This shouldn't be working since the event isn't a pull_request one at this depth
-          # # Prevent usage of simulated merge commit of PR
-          # ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Prevent usage of simulated merge commit of PR
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           lfs: true
           submodules: true
 
