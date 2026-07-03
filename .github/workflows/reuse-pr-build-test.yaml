@@ -91,7 +91,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.github-token }}
         with:
-          workflow-name: ${{ github.workflow }}
+          # workflow-name: ${{ github.workflow }} 
+          # github.workflow evaluates to PR Label but gh CLI is reporting the workflow file name!
+          # Could use the following instead:
+          # gh run list --repo "$repo" --commit "$commit_sha" --json conclusion --workflow "pr-label.yaml"
+          workflow-name: ".github/workflows/pr-label.yaml"
 
   build-and-publish:
     needs: [build-pre-check]
