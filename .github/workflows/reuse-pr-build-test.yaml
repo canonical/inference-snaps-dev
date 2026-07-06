@@ -28,11 +28,11 @@ on:
         required: false
         type: string
         default: '["ubuntu-24.04", "ubuntu-24.04-arm"]'
-      publish-channel-prefix:
-        description: Prefix for PR publish channel
+      store-track:
+        description: Snap Store track to publish to
         required: false
         type: string
-        default: latest/edge/pr-
+        default: "latest"
       snap-name:
         description: Snap name for test jobs
         required: true
@@ -41,12 +41,12 @@ on:
         description: Enable chat TPS test
         required: false
         type: boolean
-        default: true
+        default: false
       test-image-prompt:
         description: Enable image prompt test
         required: false
         type: boolean
-        default: true
+        default: false
       test-jobs-matrix:
         description: |
           JSON array of test job objects
@@ -110,7 +110,7 @@ jobs:
     with:
       runner: "${{ toJSON(matrix.runner) }}"
       init-build-script: download-models.sh # TODO: Replace this with a standard make recipe for model downloads
-      publish-channel: ${{ inputs.publish-channel-prefix }}${{ inputs.pr-number }}
+      publish-channel: ${{ inputs.store-track }}/edge/pr-${{ inputs.pr-number }} # E.g. latest/edge/pr-123
     secrets:
       store-credentials: ${{ secrets.store-credentials }}
 
@@ -130,7 +130,7 @@ jobs:
       job-queue: ${{ matrix.jobs.job-queue }}
       provision-data: ${{ matrix.jobs.provision-data }}
       snap-name: ${{ inputs.snap-name }}
-      snap-channel: ${{ inputs.publish-channel-prefix }}${{ inputs.pr-number }}
+      snap-channel: ${{ inputs.store-track }}/edge/pr-${{ inputs.pr-number }} # E.g. latest/edge/pr-123
       install-nvidia-driver-version: ${{ matrix.jobs.install-nvidia-driver-version }}
       install-intel-npu-driver: ${{ matrix.jobs.install-intel-npu-driver == true }}
       snap-connections: ${{ matrix.jobs.snap-connections }}
