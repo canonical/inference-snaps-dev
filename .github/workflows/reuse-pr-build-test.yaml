@@ -92,11 +92,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.github-token }}
         with:
-          workflow-name: ${{ github.workflow }} 
-          # # github.workflow evaluates to PR Label but gh CLI is reporting the workflow file name!
-          # # Could use the following instead:
-          # # gh run list --repo "$repo" --commit "$commit_sha" --json conclusion --workflow "pr-label.yaml"
-          # workflow-name: ".github/workflows/pr-label.yaml"
+          workflow-name: ${{ github.workflow }}
 
   build-and-publish:
     needs: [build-pre-check]
@@ -110,7 +106,7 @@ jobs:
         runner: ${{ fromJSON(inputs.build-runners) }}
     with:
       runner: "${{ toJSON(matrix.runner) }}"
-      init-build-script: download-models.sh # TODO: Replace this with a standard make recipe for model downloads
+      init-build-script: download-models.sh
       publish-channel: ${{ inputs.store-track }}/edge/pr-${{ inputs.pr-number }} # E.g. latest/edge/pr-123
     secrets:
       store-credentials: ${{ secrets.store-credentials }}
