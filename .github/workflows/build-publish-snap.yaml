@@ -33,10 +33,9 @@ jobs:
     runs-on: ${{ fromJSON(inputs.runner) }}
 
     steps:
-      # Update snapd as we need a recent one to support components
-      - name: Update snapd
+      - name: Refresh/Install snapd
         run: |
-          sudo snap refresh snapd
+          sudo snap refresh snapd || sudo snap install snapd
 
       - name: Install Git LFS
         run: sudo apt-get update && sudo apt-get install -y git-lfs

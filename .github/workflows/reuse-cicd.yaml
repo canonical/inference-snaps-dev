@@ -1,4 +1,6 @@
-name: Snap CICD
+# This workflow is designed to be called by another workflow on push events from the default branch.
+
+name: CICD
 
 on:
   workflow_call:
@@ -14,6 +16,7 @@ on:
           The input must be quoted and passed as a string.
         required: true
         type: string
+        default: '["ubuntu-24.04", "ubuntu-24.04-arm"]'
 
       build-init-script:
         description: Script to run before building the snap
