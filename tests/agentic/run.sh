@@ -18,6 +18,6 @@ workshop launch || true
 workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MODEL="$OPENROUTER_MODEL" --env SNAP_NAME="$SNAP_NAME" --env SNAP_CHANNEL="$SNAP_CHANNEL" -- \
     opencode run --auto --log-level ERROR \
     --model "openrouter/$OPENROUTER_MODEL" \
-    "Follow the instructions in AGENT.md."
+    "$(cat AGENT.md)"
 
 workshop remove
