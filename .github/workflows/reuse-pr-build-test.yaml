@@ -59,15 +59,16 @@ on:
           ]
         required: true
         type: string
+      testflinger-client-id:
+        description: Testflinger client ID for test job
+        required: true
+        type: string
     secrets:
       store-credentials:
         description: Snap Store credentials for publishing PR builds
         required: true
       github-token:
         description: GitHub token used by build pre-check and label operations
-        required: true
-      testflinger-client-id:
-        description: Testflinger client ID for test job
         required: true
       testflinger-secret-key:
         description: Testflinger secret key for test job
@@ -142,6 +143,6 @@ jobs:
       expected-tps: ${{ matrix.jobs.expected-tps }}
       test-image-prompt: ${{ matrix.jobs.test-image-prompt == true}}
       devmode: ${{ matrix.jobs.devmode == true }}
+      testflinger-client-id: ${{ inputs.testflinger-client-id }}
     secrets:
-      testflinger-client-id: ${{ secrets.testflinger-client-id }}
       testflinger-secret-key: ${{ secrets.testflinger-secret-key }}
