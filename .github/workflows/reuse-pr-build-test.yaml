@@ -66,6 +66,12 @@ on:
       github-token:
         description: GitHub token used by build pre-check and label operations
         required: true
+      testflinger-client-id:
+        description: Testflinger client ID for test job
+        required: true
+      testflinger-secret-key:
+        description: Testflinger secret key for test job
+        required: true
 
 jobs:
   remove-trigger-labels:
@@ -122,7 +128,6 @@ jobs:
       matrix:
         jobs: ${{ fromJSON(inputs.test-jobs-matrix) }}
     uses: canonical/inference-snaps-testing/.github/workflows/test-snap.yaml@v1
-    secrets: inherit
     with:
       job-queue: ${{ matrix.jobs.job-queue }}
       provision-data: ${{ matrix.jobs.provision-data }}
@@ -137,3 +142,6 @@ jobs:
       expected-tps: ${{ matrix.jobs.expected-tps }}
       test-image-prompt: ${{ matrix.jobs.test-image-prompt == true}}
       devmode: ${{ matrix.jobs.devmode == true }}
+    secrets:
+      testflinger-client-id: ${{ secrets.testflinger-client-id }}
+      testflinger-secret-key: ${{ secrets.testflinger-secret-key }}
