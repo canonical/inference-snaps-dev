@@ -66,11 +66,48 @@ as a real user would.
 >    "exit=$?"` is a reliable way to capture both output and status together.
 
 1. Install the snap from the requested channel, passing the channel string exactly as
-   given:
+   given. **Installing can take several minutes** because the snap also downloads and
+   installs large engine/model *components* after the snap itself. Kick the install off
+   without blocking, then poll until snapd reports it finished:
 
    ```
-   sudo snap install "$SNAP_NAME" --channel="$SNAP_CHANNEL"
+   sudo snap install "$SNAP_NAME" --channel="$SNAP_CHANNEL" --no-wait
+   # Wait for snapd to finish. This continues in the background even if a single command
+   # times out, so poll in short steps rather than waiting in one long-running command.
+   # Loop while any change for the snap is still in progress:
+   while snap changes "$SNAP_NAME" | grep -qE '^[0-9]+ +(Do|Doing|Undo|Undoing|Wait) '; do
+       snap changes "$SNAP_NAME" | tail -n 3
+       sleep 15
+   done
+   snap changes "$SNAP_NAME" | tail -n 5
    ```
+
+   > **Do not treat a slow or timed-out install as a failure.** `snap install` continues
+   > inside snapd even if your foreground command is cut off by the harness timeout. While
+   > it runs, a partially-installed state is completely normal — `snap list` may show
+   > `components[1/3]`, `snap components "$SNAP_NAME"` may list some components as still
+   > `available` (not yet `installed`), and the service will log
+   > "Waiting for required snap components". This is expected progress, **not** a defect.
+   >
+   > **Never** `snap abort` the install change, and **never** work around it by manually
+   > installing components (e.g. `snap install "$SNAP_NAME"+<component>`). Let the normal
+   > install finish on its own. Only after the install change reaches `Done` should you
+   > continue — then confirm the components required for your setup are `installed`:
+   >
+   > ```
+   > snap components "$SNAP_NAME"
+   > ```
+   >
+   > **Not every component listed is required.** A snap bundles components for multiple
+   > engines/models and hardware types, and only the subset needed for the **selected
+   > engine and model** on this machine is installed. It is normal and correct for the
+   > others to stay `available` rather than `installed`. Components for unavailable
+   > hardware (e.g. a CUDA engine component on a machine without an NVIDIA GPU) will
+   > legitimately not be installed — that is expected, not a failure.
+   >
+   > Only treat this as a genuine defect if the install change ends in `Error`, or if a
+   > component that *is* required for the selected engine and model is still missing after
+   > the change completes.
 
 2. Confirm it installed and inspect its interface connections:
 
