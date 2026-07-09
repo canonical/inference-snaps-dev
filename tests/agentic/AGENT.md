@@ -67,20 +67,48 @@ as a real user would.
 
 1. Install the snap from the requested channel, passing the channel string exactly as
    given. **Installing can take several minutes** because the snap also downloads and
-   installs large engine/model *components* after the snap itself. Kick the install off
-   without blocking, then poll until snapd reports it finished:
+   installs large engine/model *components* after the snap itself.
+
+   **Before installing, wait for snapd to be idle.** snapd may be busy refreshing itself
+   or other snaps (e.g. right after the runner boots). Starting a new install while it is
+   busy can cause the install to fail or race. Poll until all in-progress changes are done:
+
+   ```
+   # Wait for snapd to be idle before installing
+   while snap changes | grep -qE '^[0-9]+ +(Do|Doing|Undo|Undoing|Wait) '; do
+       echo "Waiting for snapd to finish in-progress changes..."
+       snap changes | grep -E '^[0-9]+ +(Do|Doing|Undo|Undoing|Wait) '
+       sleep 10
+   done
+   ```
+
+   Then kick the install off without blocking and poll until snapd reports it finished:
 
    ```
    sudo snap install "$SNAP_NAME" --channel="$SNAP_CHANNEL" --no-wait
-   # Wait for snapd to finish. This continues in the background even if a single command
-   # times out, so poll in short steps rather than waiting in one long-running command.
-   # Loop while any change for the snap is still in progress:
+   # Poll in short steps — the install continues in the background even if a command times out.
    while snap changes "$SNAP_NAME" | grep -qE '^[0-9]+ +(Do|Doing|Undo|Undoing|Wait) '; do
        snap changes "$SNAP_NAME" | tail -n 3
        sleep 15
    done
    snap changes "$SNAP_NAME" | tail -n 5
    ```
+
+   **If the install ends in `Error`**, check what failed before giving up. If the error
+   comes from the install hook and appears to be a confinement or interface problem (e.g.
+   a tool inside the snap could not access hardware it needed), retry the install with
+   `--devmode` to bypass strict confinement:
+
+   ```
+   sudo snap install "$SNAP_NAME" --channel="$SNAP_CHANNEL" --devmode
+   ```
+
+   A snap that requires `--devmode` to install is a **genuine defect** — record it in
+   your report and note that the rest of the testing was done in devmode. Continue with
+   the remaining steps so you can test functionality despite the install issue.
+
+   If the install error is something other than a hook/confinement failure (e.g. a network
+   error, or the snap does not exist in that channel), report it and exit 1 immediately.
 
    > **Do not treat a slow or timed-out install as a failure.** `snap install` continues
    > inside snapd even if your foreground command is cut off by the harness timeout. While
