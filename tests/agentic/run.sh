@@ -4,7 +4,7 @@ set -euo pipefail
 export SNAP_NAME="${SNAP_NAME:-smollm2}"
 export SNAP_CHANNEL="${SNAP_CHANNEL:-edge}"
 export OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}"
-export OPENROUTER_MODEL="${OPENROUTER_MODEL:-openrouter/openrouter/free}"
+export OPENROUTER_MODEL="${OPENROUTER_MODEL:-deepseek/deepseek-v4-flash}"
 
 if [[ -z "${OPENROUTER_API_KEY:-}" ]]; then
     echo "ERROR: OPENROUTER_API_KEY is not set in this shell." >&2
@@ -17,5 +17,7 @@ workshop launch || true
 
 workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MODEL="$OPENROUTER_MODEL" --env SNAP_NAME="$SNAP_NAME" --env SNAP_CHANNEL="$SNAP_CHANNEL" -- \
     opencode run --auto --log-level ERROR \
-    --model "$OPENROUTER_MODEL" \
+    --model "openrouter/$OPENROUTER_MODEL" \
     "Follow the instructions in AGENT.md."
+
+workshop remove
