@@ -179,20 +179,74 @@ Approach it like a curious user:
   lower output quality from a small model). Judge whether the snap behaves as its docs
   say it should, and note anything that does not.
 
-## Reporting and exit codes
+## Reporting
 
-End your run with a clear **PASS/FAIL** summary. Report a genuine problem for any error,
-crash, incorrect or unexpected output, missing functionality, or clearly unreasonable
-behaviour. For every problem include:
+**Your very last action MUST be to write a JSON report to `/tmp/snap-test-report.json`.**
+The CI harness reads this file to determine whether the workflow passes or fails and to
+create GitHub issues from any findings. Do not omit it or write anything other than
+valid JSON.
 
-1. **What went wrong** — a clear description of the failure and what you were testing.
-2. **How to reproduce it** — the exact commands you ran, in order, including the channel
-   (`$SNAP_CHANNEL`).
-3. **Observed vs. expected behaviour** — command output, error messages, and what you
-   expected instead.
-4. **Environment details** — installed snap version and revision
-   (`snap info "$SNAP_NAME"`), runner architecture (`uname -m`), and any relevant
-   configuration the snap was using.
+### Schema
 
-Exit **0** only if the snap genuinely works as documented, with no unresolved problems.
-Exit **1** if anything failed or could not be verified.
+```json
+{
+  "verdict": "PASS",
+  "summary": "One-sentence description of the overall result.",
+  "environment": {
+    "snap_name": "smollm2",
+    "snap_channel": "edge",
+    "snap_version": "1.2.3",
+    "snap_revision": "48",
+    "devmode": false,
+    "arch": "x86_64",
+    "os": "Ubuntu 24.04.4 LTS"
+  },
+  "findings": []
+}
+```
+
+`verdict` is `"PASS"` or `"FAIL"`. Set it to `"FAIL"` if **any** finding has severity
+`"error"`. Set it to `"PASS"` only if the snap genuinely works as documented with no
+unresolved problems. Warnings and info findings alone do not make a verdict `"FAIL"`.
+
+Each entry in `findings` must follow this structure:
+
+```json
+{
+  "severity": "error",
+  "title": "Short title suitable for a GitHub issue title",
+  "description": "Clear description of what went wrong and what you were testing.",
+  "reproduction": "Exact shell commands to reproduce, in order.",
+  "observed": "Actual command output or error messages.",
+  "expected": "What should have happened instead.",
+  "labels": ["bug"]
+}
+```
+
+`severity` must be one of:
+- `"error"` — a genuine defect: crash, incorrect output, missing documented functionality,
+  or confinement issue that prevents normal use.
+- `"warning"` — something worth noting but does not block normal use (e.g. a suboptimal
+  default, a misleading error message).
+- `"info"` — informational observation with no action required.
+
+`labels` is a list of zero or more suggested GitHub issue labels. Choose from:
+`"bug"`, `"install"`, `"confinement"`, `"performance"`, `"documentation"`, `"ux"`.
+
+### Writing the report
+
+Collect all findings as you work, then at the very end run:
+
+```bash
+cat > /tmp/snap-test-report.json << 'REPORT'
+{
+  "verdict": "PASS or FAIL",
+  "summary": "...",
+  "environment": { ... },
+  "findings": [ ... ]
+}
+REPORT
+```
+
+Make sure the output is valid JSON (no trailing commas, all strings quoted). If you have
+no findings, write `"findings": []`.
