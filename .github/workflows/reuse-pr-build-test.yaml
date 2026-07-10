@@ -128,7 +128,7 @@ jobs:
       fail-fast: false
       matrix:
         jobs: ${{ fromJSON(inputs.test-jobs-matrix) }}
-    uses: canonical/inference-snaps-testing/.github/workflows/test-snap.yaml@tf-auth # v1
+    uses: canonical/inference-snaps-testing/.github/workflows/test-snap.yaml@v1
     with:
       job-queue: ${{ matrix.jobs.job-queue }}
       provision-data: ${{ matrix.jobs.provision-data }}
