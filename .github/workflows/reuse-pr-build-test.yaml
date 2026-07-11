@@ -19,7 +19,7 @@ on:
         description: Pull request number
         required: true
         type: string
-      build-runners:
+      build-runner:
         description: |
           JSON array containing runner configurations for builds.
           Example:
