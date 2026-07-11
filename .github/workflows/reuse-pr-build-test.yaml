@@ -19,7 +19,7 @@ on:
         description: Pull request number
         required: true
         type: string
-      build-runners:
+      build-runner:
         description: |
           JSON array containing runner configurations for builds.
           Example:
@@ -110,7 +110,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: ${{ fromJSON(inputs.build-runners) }}
+        runner: ${{ fromJSON(inputs.build-runner) }}
     with:
       runner: "${{ toJSON(matrix.runner) }}"
       init-build-script: download-models.sh
