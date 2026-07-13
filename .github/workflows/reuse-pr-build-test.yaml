@@ -122,8 +122,8 @@ jobs:
     needs: [build-and-publish]
     # Run only for trigger-tests label, not any other label
     # Run even if previous job was skipped (!cancelled)
-    # Run only if build hasn't failed
-    if: ${{ inputs.trigger-label == 'trigger-tests' && !cancelled() && needs.build-and-publish.result != 'failed' }}
+    # Run only if build completed successfully or was skipped due to pre-check
+    if: ${{ inputs.trigger-label == 'trigger-tests' && !cancelled() && (needs.build-and-publish.result == 'success' || needs.build-and-publish.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
