@@ -14,6 +14,7 @@ fi
 
 # Launch the workshop if it isn't already running.
 workshop launch || true
+trap 'workshop remove' EXIT
 
 workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MODEL="$OPENROUTER_MODEL" --env SNAP_NAME="$SNAP_NAME" --env SNAP_CHANNEL="$SNAP_CHANNEL" -- \
     opencode run --auto --log-level ERROR \
@@ -22,8 +23,6 @@ workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MO
 
 # Pull the JSON report the agent wrote; fall back to a synthetic failure if it is missing.
 REPORT_JSON=$(workshop exec -- sh -c 'cat /tmp/snap-test-report.json 2>/dev/null')
-
-workshop remove
 
 if [[ -z "$REPORT_JSON" ]]; then
     echo "ERROR: agent did not write /tmp/snap-test-report.json" >&2
@@ -37,17 +36,43 @@ if ! echo "$REPORT_JSON" | jq . > /dev/null 2>&1; then
     exit 1
 fi
 
+echo "$REPORT_JSON" > snap-test-report.json
 echo "=== Agent report ==="
-echo "$REPORT_JSON" | jq .
+jq . snap-test-report.json
 
-VERDICT=$(echo "$REPORT_JSON" | jq -r '.verdict // "UNKNOWN"')
-SUMMARY=$(echo "$REPORT_JSON" | jq -r '.summary // "(no summary)"')
-ERROR_COUNT=$(echo "$REPORT_JSON" | jq '[.findings[] | select(.severity == "error")] | length')
+VERDICT=$(jq -r '.verdict // "UNKNOWN"' snap-test-report.json)
+SUMMARY=$(jq -r '.summary // "(no summary)"' snap-test-report.json)
+ERROR_COUNT=$(jq '[.findings[] | select(.severity == "error")] | length' snap-test-report.json)
 
 echo ""
 echo "Verdict : $VERDICT"
 echo "Summary : $SUMMARY"
 echo "Errors  : $ERROR_COUNT"
+
+# If there are error findings, run the triage agent to compare them against open issues.
+if [[ "$ERROR_COUNT" -gt 0 ]]; then
+    echo ""
+    echo "=== Running issue triage agent ==="
+    workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MODEL="$OPENROUTER_MODEL" -- \
+        opencode run --auto --log-level ERROR \
+        --model "openrouter/$OPENROUTER_MODEL" \
+        "$(cat TRIAGE.md)" || true
+
+    TRIAGE_JSON=$(workshop exec -- sh -c 'cat /tmp/snap-triage-report.json 2>/dev/null')
+    if [[ -n "$TRIAGE_JSON" ]] && echo "$TRIAGE_JSON" | jq . > /dev/null 2>&1; then
+        echo "$TRIAGE_JSON" > snap-triage-report.json
+        echo ""
+        echo "=== Triage report ==="
+        jq . snap-triage-report.json
+        NEW_COUNT=$(jq '.new_count // 0' snap-triage-report.json)
+        DUP_COUNT=$(jq '.duplicate_count // 0' snap-triage-report.json)
+        echo ""
+        echo "New issues : $NEW_COUNT"
+        echo "Duplicates : $DUP_COUNT"
+    else
+        echo "WARNING: triage agent did not produce a valid /tmp/snap-triage-report.json" >&2
+    fi
+fi
 
 if [[ "$VERDICT" != "PASS" ]]; then
     echo "Test FAILED" >&2
