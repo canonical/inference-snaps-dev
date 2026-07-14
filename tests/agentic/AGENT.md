@@ -152,11 +152,22 @@ as a real user would.
    > required for the selected engine and model on this machine are installed; the rest
    > stay available. See the install step above for details.
 
-   These snaps are strictly confined, so some interfaces (plugs) may not auto-connect.
-   This is expected and is only a real problem if it actually prevents the snap from
-   working. If, and only if, something you test fails because of a missing connection,
-   connect it with `sudo snap connect "$SNAP_NAME":<plug>` and note that it was required.
-   Do not fail the run solely because a plug is unconnected while the snap still works.
+   These snaps are strictly confined. Interfaces (plugs) fall into two categories, and
+   they must be judged differently:
+
+   - **Plugs the snap declares as auto-connecting** (most hardware/observe interfaces a
+     snap needs to do its job, e.g. `hardware-observe`). These are *supposed* to be
+     connected automatically at install time. If one of these arrives **unconnected** and
+     something fails because of it, that is a **genuine defect (`severity: error`)** — the
+     snap is meant to work out of the box without the user running `snap connect`. Having
+     to connect it by hand does **not** make it "working as intended"; the manual connect
+     is your *proof* of the bug, not a fix for it.
+   - **Truly optional plugs** that are documented as manual/opt-in and are not expected to
+     auto-connect. A missing connection here is only a problem if it blocks something a
+     user would reasonably expect to work; otherwise it is expected and not a finding.
+
+   So: do not silently work around a missing auto-connect and pass the run. Only ignore an
+   unconnected plug when it is genuinely optional/opt-in **and** nothing you test needs it.
 
    > **Diagnose confinement failures to their root cause.** A single unconnected
    > interface often breaks several different commands at once, which can look like many
@@ -172,9 +183,14 @@ as a real user would.
    >    ```
    >    The denial line names the profile and the operation/interface being blocked.
    > 2. Cross-check against `snap connections "$SNAP_NAME"` to see which plug is missing.
+   >    A plug listed with no connection (or an interface the snap's `snap.yaml` marks as
+   >    auto-connecting) that is not connected is a strong signal of an auto-connect defect.
    > 3. Confirm the diagnosis: connect the specific plug
    >    (`sudo snap connect "$SNAP_NAME":<plug>`), retry the failing command, and check
-   >    the failure goes away.
+   >    the failure goes away. **Then record it as a `severity: error` finding** — the fact
+   >    that a manual connect fixes it is the evidence that the plug should have
+   >    auto-connected but did not. Do **not** downgrade it to a warning or omit it just
+   >    because the command works once you connect it by hand.
    >
    > If one missing connection explains multiple symptoms, treat it as a **single**
    > root-cause finding (see "Consolidate symptoms of one root cause" under Reporting) —
@@ -282,9 +298,13 @@ Each entry in `findings` must follow this structure:
 
 `severity` must be one of:
 - `"error"` — a genuine defect: crash, incorrect output, missing documented functionality,
-  or confinement issue that prevents normal use.
+  or a confinement issue. A plug that the snap declares as auto-connecting (e.g.
+  `hardware-observe`) but which arrives **unconnected** and breaks something is an
+  `"error"` **even if the snap works once you connect it by hand** — needing a manual
+  `snap connect` for an interface that should auto-connect is itself the defect.
 - `"warning"` — something worth noting but does not block normal use (e.g. a suboptimal
-  default, a misleading error message).
+  default, a misleading error message, or a genuinely optional/opt-in plug that is not
+  connected but that nothing you tested actually needed).
 - `"info"` — informational observation with no action required.
 
 `labels` must always include `"bot"` and the snap name (e.g. `"smollm2"`). Do not add
