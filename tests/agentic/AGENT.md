@@ -158,6 +158,29 @@ as a real user would.
    connect it with `sudo snap connect "$SNAP_NAME":<plug>` and note that it was required.
    Do not fail the run solely because a plug is unconnected while the snap still works.
 
+   > **Diagnose confinement failures to their root cause.** A single unconnected
+   > interface often breaks several different commands at once, which can look like many
+   > separate bugs but is really **one** defect. When something fails in a way that could
+   > be a confinement problem (permission denied, cannot read a device/file, empty or
+   > partial hardware info, a feature silently unavailable), investigate the underlying
+   > cause before writing it up:
+   >
+   > 1. Look for AppArmor denials produced while the command ran:
+   >    ```
+   >    sudo dmesg | grep -i 'apparmor="DENIED"' | tail -n 20
+   >    sudo journalctl -k -g 'apparmor="DENIED"' --no-pager | tail -n 20
+   >    ```
+   >    The denial line names the profile and the operation/interface being blocked.
+   > 2. Cross-check against `snap connections "$SNAP_NAME"` to see which plug is missing.
+   > 3. Confirm the diagnosis: connect the specific plug
+   >    (`sudo snap connect "$SNAP_NAME":<plug>`), retry the failing command, and check
+   >    the failure goes away.
+   >
+   > If one missing connection explains multiple symptoms, treat it as a **single**
+   > root-cause finding (see "Consolidate symptoms of one root cause" under Reporting) —
+   > name the specific interface (e.g. `hardware-observe`) and list the affected commands
+   > as evidence, rather than filing one finding per broken command.
+
 3. Capture machine information through a PTY and save it for the report:
 
    ```
@@ -266,6 +289,25 @@ Each entry in `findings` must follow this structure:
 
 `labels` must always include `"bot"` and the snap name (e.g. `"smollm2"`). Do not add
 any other labels.
+
+### Consolidate symptoms of one root cause
+
+**Report root causes, not symptoms.** Before writing findings, group everything you
+observed by underlying cause. When several failures share a single root cause — most
+commonly one missing interface connection (e.g. `hardware-observe`) breaking several
+commands — emit **one** finding for that root cause, not one per affected command.
+
+For such a consolidated finding:
+- Make the `title` name the root cause and the specific interface, e.g.
+  "hardware-observe not auto-connected — show-machine and GPU detection fail".
+- In `description`, state the root cause once, then list each affected command as
+  supporting evidence.
+- Put the AppArmor denial line(s) and the `snap connections` excerpt that prove the
+  diagnosis in `observed`.
+- In `reproduction`, give the shortest command sequence that triggers the denial.
+
+Only file separate findings when the failures genuinely have **different** root causes.
+Two symptoms that both disappear after connecting the same plug are one finding.
 
 ### Writing the report
 
