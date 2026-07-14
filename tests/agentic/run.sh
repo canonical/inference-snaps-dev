@@ -16,7 +16,7 @@ fi
 workshop launch || true
 trap 'workshop remove' EXIT
 
-workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MODEL="$OPENROUTER_MODEL" --env SNAP_NAME="$SNAP_NAME" --env SNAP_CHANNEL="$SNAP_CHANNEL" -- \
+workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MODEL="$OPENROUTER_MODEL" --env SNAP_NAME="$SNAP_NAME" --env SNAP_CHANNEL="$SNAP_CHANNEL" --env GITHUB_SERVER_URL="${GITHUB_SERVER_URL:-}" --env GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-}" --env GITHUB_RUN_ID="${GITHUB_RUN_ID:-}" -- \
     opencode run --auto --log-level ERROR \
     --model "openrouter/$OPENROUTER_MODEL" \
     "$(cat AGENT.md)" || true
@@ -53,7 +53,7 @@ echo "Errors  : $ERROR_COUNT"
 if [[ "$ERROR_COUNT" -gt 0 ]]; then
     echo ""
     echo "=== Running issue triage agent ==="
-    workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MODEL="$OPENROUTER_MODEL" -- \
+    workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MODEL="$OPENROUTER_MODEL" --env GITHUB_SERVER_URL="${GITHUB_SERVER_URL:-}" --env GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-}" --env GITHUB_RUN_ID="${GITHUB_RUN_ID:-}" -- \
         opencode run --auto --log-level ERROR \
         --model "openrouter/$OPENROUTER_MODEL" \
         "$(cat TRIAGE.md)" || true

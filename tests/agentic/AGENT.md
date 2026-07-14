@@ -144,13 +144,31 @@ as a real user would.
    snap connections "$SNAP_NAME"
    ```
 
+   **Save the full output of `snap list "$SNAP_NAME"` now** — you will need it verbatim
+   for the test report's `environment.snap_list_output` field.
+
+   > `snap list` may show `components[2/3]` or similar. This is **not** a problem — it
+   > means not all components are installed, which is expected. Only the components
+   > required for the selected engine and model on this machine are installed; the rest
+   > stay available. See the install step above for details.
+
    These snaps are strictly confined, so some interfaces (plugs) may not auto-connect.
    This is expected and is only a real problem if it actually prevents the snap from
    working. If, and only if, something you test fails because of a missing connection,
    connect it with `sudo snap connect "$SNAP_NAME":<plug>` and note that it was required.
    Do not fail the run solely because a plug is unconnected while the snap still works.
 
-3. Discover the available commands before using them, running the CLI through a PTY so
+3. Capture machine information through a PTY and save it for the report:
+
+   ```
+   script -qec '"$SNAP_NAME" show-machine' /dev/null
+   ```
+
+   **Save the full output** — you will need it verbatim for the test report's
+   `environment.show_machine_output` field. If `show-machine` does not exist or errors,
+   record the error output instead so it is still available for issue reports.
+
+4. Discover the available commands before using them, running the CLI through a PTY so
    its output is captured:
 
    ```
@@ -193,13 +211,16 @@ valid JSON.
   "verdict": "PASS",
   "summary": "One-sentence description of the overall result.",
   "environment": {
-    "snap_name": "smollm2",
-    "snap_channel": "edge",
+    "snap_name": "$SNAP_NAME",
+    "snap_channel": "$SNAP_CHANNEL",
     "snap_version": "1.2.3",
     "snap_revision": "48",
+    "snap_list_output": "<full output of: snap list $SNAP_NAME>",
+    "show_machine_output": "<full output of: script -qec '$SNAP_NAME show-machine' /dev/null>",
     "devmode": false,
     "arch": "x86_64",
-    "os": "Ubuntu 24.04.4 LTS"
+    "os": "Ubuntu 24.04.4 LTS",
+    "ci_run_url": "<$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID, or null if not running in GitHub Actions>"
   },
   "findings": []
 }
@@ -216,12 +237,25 @@ Each entry in `findings` must follow this structure:
   "severity": "error",
   "title": "Short title suitable for a GitHub issue title",
   "description": "Clear description of what went wrong and what you were testing.",
-  "reproduction": "Exact shell commands to reproduce, in order.",
+  "reproduction": "Exact shell commands to reproduce, in order. This maps directly to the 'To reproduce' field in the GitHub issue template.",
   "observed": "Actual command output or error messages.",
   "expected": "What should have happened instead.",
-  "labels": ["bug"]
+  "labels": ["bot", "$SNAP_NAME"]
 }
 ```
+
+> **How findings map to the GitHub issue template:**
+> - `title` → issue title
+> - `description` + `observed` + `expected` → "Bug description" (the triage agent will
+>   combine them: description of the problem, then observed vs expected behaviour)
+> - `reproduction` → "To reproduce"
+> - `environment.snap_list_output` → "Snap version"
+> - `environment.show_machine_output` → "System information"
+> - `environment.ci_run_url` → included in "Bug description" as a link to the CI run
+>   (only when non-null)
+>
+> Fill every field with enough detail that someone reading the issue can understand and
+> reproduce the problem without access to this CI run.
 
 `severity` must be one of:
 - `"error"` — a genuine defect: crash, incorrect output, missing documented functionality,
@@ -230,8 +264,8 @@ Each entry in `findings` must follow this structure:
   default, a misleading error message).
 - `"info"` — informational observation with no action required.
 
-`labels` is a list of zero or more suggested GitHub issue labels. Choose from:
-`"bug"`, `"install"`, `"confinement"`, `"performance"`, `"documentation"`, `"ux"`.
+`labels` must always include `"bot"` and the snap name (e.g. `"smollm2"`). Do not add
+any other labels.
 
 ### Writing the report
 
