@@ -319,7 +319,7 @@ commands — emit **one** finding for that root cause, not one per affected comm
 
 For such a consolidated finding:
 - Make the `title` name the root cause and the specific interface, e.g.
-  "hardware-observe not auto-connected — show-machine and GPU detection fail".
+  "hardware-observe not auto-connected".
 - In `description`, state the root cause once, then list each affected command as
   supporting evidence.
 - Put the AppArmor denial line(s) and the `snap connections` excerpt that prove the

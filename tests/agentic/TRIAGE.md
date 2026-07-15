@@ -110,7 +110,7 @@ are already tracked and which are new.
    - System information ← report.environment.show_machine_output (wrapped in the
                           <details> block the template specifies)>
 
-   Suggested labels: <comma-separated list — always includes "bot" and the snap name>
+   Suggested labels: <comma-separated list — always includes "bot" and the snap name in the format `snap/<snap name>`>
    Issue type: Bug
    ---
 
@@ -123,7 +123,7 @@ are already tracked and which are new.
    Suggested body:
    <same structure as above>
 
-   Suggested labels: <comma-separated list — always includes "bot" and the snap name>
+   Suggested labels: <comma-separated list — always includes "bot" and the snap name in the format `snap/<snap name>`>
    Issue type: Bug
    ---
    ```
@@ -147,7 +147,7 @@ are already tracked and which are new.
          "status": "NEW",
          "suggested_title": "...",
          "suggested_body": "<issue body using sections from the fetched bug_report.yaml template>",
-         "suggested_labels": ["bot", "smollm2"],
+         "suggested_labels": ["bot", "snap/smollm2"],
          "issue_type": "Bug"
        },
        {
@@ -160,7 +160,7 @@ are already tracked and which are new.
          "duplicate_reason": "...",
          "suggested_title": "...",
          "suggested_body": "<issue body using sections from the fetched bug_report.yaml template>",
-         "suggested_labels": ["bot", "smollm2"],
+         "suggested_labels": ["bot", "snap/smollm2"],
          "issue_type": "Bug"
        }
      ]
