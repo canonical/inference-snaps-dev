@@ -26,32 +26,22 @@ are already tracked and which are new.
    Use the `label`, `description`, and `value` of each field to guide how you fill in
    the content for each finding.
 
-3. **Fetch issues from GitHub** (the repository is public; no token required).
+3. **Fetch open issues from GitHub** (the repository is public; no token required).
 
-   Fetch **open** issues first — these are the primary duplicate targets:
+   Fetch only **open** issues — these are the duplicate targets:
 
    ```
    curl -s "https://api.github.com/repos/canonical/inference-snaps/issues?state=open&per_page=100"
    ```
 
-   Then also fetch **recently closed** issues. Duplicates are frequently reported against
-   an *earlier revision* of the snap and then closed once fixed (or closed as duplicates
-   themselves), so an open-only search misses them. A root cause that resurfaces on a new
-   revision is still the same problem and should be matched to the closed issue:
+   If you get back fewer than 100 issues, one page is enough. If the response contains
+   exactly 100 items, fetch the next page by appending `&page=2`, and continue until a
+   page returns fewer than 100 items.
 
-   ```
-   curl -s "https://api.github.com/repos/canonical/inference-snaps/issues?state=closed&per_page=100&sort=updated&direction=desc"
-   ```
-
-   For each query: if you get back fewer than 100 issues, one page is enough. If the
-   response contains exactly 100 items, fetch the next page by appending `&page=2`, and
-   continue until a page returns fewer than 100 items. For the closed query it is enough
-   to collect the first two pages (the 200 most recently updated closed issues); older
-   closed issues are unlikely to be relevant.
-
-   Collect all fetched issues before proceeding. Track each issue's `state` (`open` or
-   `closed`) so you can report it. For each issue keep: number, title, body (first 500
-   chars is enough), html_url, state.
+   Collect all fetched issues before proceeding. For each issue keep: number, title, body
+   (first 500 chars is enough), html_url, and the list of label names (`labels[].name`).
+   The label names matter for reporting cross-snap duplicates: issues are labelled with a
+   `snap/<snap name>` label identifying which snap they were detected on.
 
 4. **Triage each error finding.**
 
@@ -68,20 +58,15 @@ are already tracked and which are new.
    representative finding* (Status `DUPLICATE`, and note in the Reason that it duplicates
    another finding in this same run). Do not file multiple GitHub issues for one cause.
 
-   4b. **Compare each representative finding against the collected issues** (open *and*
-   recently closed). Decide whether an existing issue describes the same underlying
-   problem closely enough that filing a new issue would be a duplicate. Use the finding's
-   `title`, `description`, `observed`, and `expected` fields for comparison. A match is
-   "close enough" when the existing issue is clearly about the **same failure mode / root
-   cause in the same snap component** — for example both are caused by the same interface
-   not being connected — even if it was reported on an earlier revision or has since been
-   closed. A shared root cause outweighs differences in the exact command or error string.
-   Do **not** match on vague keyword overlap alone.
-
-   When the matched issue is **closed**, still mark the finding `DUPLICATE`, record that
-   the existing issue is closed, and note in the Reason that the same root cause has
-   resurfaced (which may warrant reopening the existing issue rather than filing a new
-   one).
+   4b. **Compare each representative finding against the collected open issues.** Decide
+   whether an existing issue describes the same underlying problem closely enough that
+   filing a new issue would be a duplicate. Use the finding's `title`, `description`,
+   `observed`, and `expected` fields for comparison. A match is "close enough" when the
+   existing issue is clearly about the **same failure mode / root cause in the same snap
+   component** — for example both are caused by the same interface not being connected —
+   even if it was reported on an earlier revision. A shared root cause outweighs
+   differences in the exact command or error string. Do **not** match on vague keyword
+   overlap alone.
 
 5. **Print the triage report** in this exact format so it is easy to read in CI logs:
 
@@ -90,11 +75,10 @@ are already tracked and which are new.
 
    Finding 1: <finding title>
    Status   : DUPLICATE
-   Issue    : #<number> — <title> [<open|closed>]
+   Issue    : #<number> — <title>
    URL      : <html_url>
-   Reason   : <one sentence explaining why this is the same root cause; if the issue is
-              closed, note that the root cause has resurfaced; if it duplicates another
-              finding in this same run, say so instead of citing a GitHub issue>
+   Reason   : <one sentence explaining why this is the same root cause; if it duplicates
+              another finding in this same run, say so instead of citing a GitHub issue>
    ---
    Suggested title:
    <A concise GitHub issue title>
@@ -144,26 +128,29 @@ are already tracked and which are new.
            "suggested_title": "...",
            "suggested_body": "<issue body using sections from the fetched bug_report.yaml template>"
          },
-         {
-           "finding_title": "...",
-           "status": "DUPLICATE",
-           "duplicate_of_number": 42,
-           "duplicate_of_url": "https://github.com/canonical/inference-snaps/issues/42",
-           "duplicate_of_state": "closed",
-           "duplicate_of_finding": null,
-           "duplicate_reason": "...",
-           "suggested_title": "...",
-           "suggested_body": "<issue body using sections from the fetched bug_report.yaml template>"
-         }
-     ]
-   }
-   ```
+          {
+            "finding_title": "...",
+            "status": "DUPLICATE",
+            "duplicate_of_number": 42,
+            "duplicate_of_url": "https://github.com/canonical/inference-snaps/issues/42",
+            "duplicate_of_labels": ["bot", "snap/other-snap"],
+            "duplicate_of_finding": null,
+            "duplicate_reason": "...",
+            "suggested_title": "...",
+            "suggested_body": "<issue body using sections from the fetched bug_report.yaml template>"
+          }
+      ]
+    }
+    ```
 
    Notes on the duplicate fields:
-   - `duplicate_of_state` is `"open"` or `"closed"` when the match is an existing GitHub
-     issue; a `"closed"` value signals the root cause has resurfaced and the existing
-     issue may need reopening.
+   - `duplicate_of_number`/`duplicate_of_url` reference the matched **open** GitHub issue.
+   - `duplicate_of_labels` is the list of label names currently on the matched GitHub issue
+     (copy them verbatim). This lets the workflow detect when the duplicate was originally
+     detected on a **different** snap (its labels contain a `snap/<other snap>` label but
+     not this run's `snap/<snap name>` label) so it can add this snap's label to the shared
+     issue. Set it to `null` for same-run duplicates.
    - `duplicate_of_finding` is the `finding_title` of another finding **in this same run**
      when this finding was collapsed as a same-run duplicate (step 4a); in that case
-     `duplicate_of_number`/`duplicate_of_url`/`duplicate_of_state` may be null.
+     `duplicate_of_number`/`duplicate_of_url`/`duplicate_of_labels` may be null.
 

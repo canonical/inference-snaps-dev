@@ -132,32 +132,32 @@ if [[ "$ERROR_COUNT" -gt 0 ]]; then
             FAILED=0
             for i in $NEW_INDICES; do
                 ISSUE_TITLE=$(jq -r ".results[$i].suggested_title" snap-triage-report.json)
+                ISSUE_BODY=$(jq -r ".results[$i].suggested_body" snap-triage-report.json)
 
-                # Build the API payload straight from the triage report.
-                PAYLOAD=$(jq -c --arg snap_label "snap/$SNAP_NAME" "{
-                    title: .results[$i].suggested_title,
-                    body:  .results[$i].suggested_body,
-                    labels: [\"bot\", \$snap_label],
-                    type: \"Bug\"
-                }" snap-triage-report.json)
-
-                HTTP_BODY=$(curl -sS -w '\n%{http_code}' -X POST \
-                    -H "Authorization: Bearer $ISSUE_CREATE_TOKEN" \
-                    -H "Accept: application/vnd.github+json" \
-                    -H "X-GitHub-Api-Version: 2022-11-28" \
-                    "https://api.github.com/repos/$ISSUE_REPO/issues" \
-                    -d "$PAYLOAD" 2>/dev/null || true)
-
-                HTTP_CODE=$(printf '%s' "$HTTP_BODY" | tail -n1)
-                RESPONSE=$(printf '%s' "$HTTP_BODY" | sed '$d')
-
-                if [[ "$HTTP_CODE" == "201" ]]; then
-                    ISSUE_URL=$(printf '%s' "$RESPONSE" | jq -r '.html_url // empty')
+                # Step 1: create the issue with gh's builtin flags (auth, base URL and
+                # versioning are handled for us; GH_TOKEN scopes it to the cross-repo PAT).
+                if ISSUE_URL=$(GH_TOKEN="$ISSUE_CREATE_TOKEN" gh issue create \
+                    --repo "$ISSUE_REPO" \
+                    --title "$ISSUE_TITLE" \
+                    --body "$ISSUE_BODY" \
+                    --label "bot" \
+                    --label "snap/$SNAP_NAME" 2>/tmp/gh-issue-err); then
                     echo "Created: $ISSUE_URL  ($ISSUE_TITLE)"
                     CREATED=$((CREATED + 1))
+
+                    # Step 2: set the issue type (gh issue create has no --type flag,
+                    # so patch it via the API). Non-fatal: warn but keep the issue.
+                    ISSUE_NUMBER=$(basename "$ISSUE_URL")
+                    if ! GH_TOKEN="$ISSUE_CREATE_TOKEN" gh api --method PATCH \
+                        "repos/$ISSUE_REPO/issues/$ISSUE_NUMBER" -f type=Bug \
+                        >/dev/null 2>/tmp/gh-type-err; then
+                        ERR_MSG=$(jq -r '.message // empty' /tmp/gh-type-err 2>/dev/null)
+                        ERR_MSG=${ERR_MSG:-$(cat /tmp/gh-type-err 2>/dev/null || echo "unknown error")}
+                        echo "WARNING: created $ISSUE_URL but failed to set type=Bug — $ERR_MSG" >&2
+                    fi
                 else
-                    ERR_MSG=$(printf '%s' "$RESPONSE" | jq -r '.message // "unknown error"' 2>/dev/null || echo "unknown error")
-                    echo "FAILED (HTTP $HTTP_CODE): $ISSUE_TITLE — $ERR_MSG" >&2
+                    ERR_MSG=$(cat /tmp/gh-issue-err 2>/dev/null || echo "unknown error")
+                    echo "FAILED: $ISSUE_TITLE — $ERR_MSG" >&2
                     FAILED=$((FAILED + 1))
                 fi
             done
@@ -168,6 +168,60 @@ if [[ "$ERROR_COUNT" -gt 0 ]]; then
 
             if [[ "$FAILED" -gt 0 ]]; then
                 echo "WARNING: $FAILED issue(s) could not be created in $ISSUE_REPO." >&2
+            fi
+        fi
+
+        # ---------------------------------------------------------------------
+        # Cross-snap duplicates: when a finding duplicates an *existing* issue that
+        # was originally detected on a different snap (its labels contain some
+        # snap/<other> label but not our snap/$SNAP_NAME label), add our snap label
+        # to that issue so the tracker records every snap affected by the same bug.
+        # ---------------------------------------------------------------------
+        CROSS_SNAP_INDICES=$(jq -r --arg snap_label "snap/$SNAP_NAME" '
+            [.results | to_entries[]
+             | select(.value.status == "DUPLICATE"
+                      and .value.duplicate_of_number != null
+                      and ((.value.duplicate_of_labels // []) | any(startswith("snap/")))
+                      and ((.value.duplicate_of_labels // []) | index($snap_label) | not))
+             | .key] | .[]' snap-triage-report.json)
+
+        if [[ "$CREATE_ISSUES" != "true" ]]; then
+            if [[ -n "$CROSS_SNAP_INDICES" ]]; then
+                echo ""
+                echo "Issue creation is disabled (create_issues=false); did not add 'snap/$SNAP_NAME' to cross-snap duplicate issue(s)."
+                echo "Re-run the workflow with create_issues=true to label them in $ISSUE_REPO."
+            fi
+        elif [[ -z "${ISSUE_CREATE_TOKEN}" ]]; then
+            if [[ -n "$CROSS_SNAP_INDICES" ]]; then
+                echo ""
+                echo "WARNING: create_issues=true but ISSUE_CREATE_TOKEN is empty; cannot label cross-snap duplicate issues in $ISSUE_REPO." >&2
+            fi
+        elif [[ -n "$CROSS_SNAP_INDICES" ]]; then
+            echo ""
+            echo "::group::Labelling cross-snap duplicate issues in $ISSUE_REPO"
+            LABELLED=0
+            LABEL_FAILED=0
+            for i in $CROSS_SNAP_INDICES; do
+                ISSUE_NUMBER=$(jq -r ".results[$i].duplicate_of_number" snap-triage-report.json)
+                ISSUE_URL=$(jq -r ".results[$i].duplicate_of_url // \"(unknown)\"" snap-triage-report.json)
+
+                if GH_TOKEN="$ISSUE_CREATE_TOKEN" gh issue edit "$ISSUE_NUMBER" \
+                    --repo "$ISSUE_REPO" --add-label "snap/$SNAP_NAME" >/dev/null 2>/tmp/gh-label-err; then
+                    echo "Labelled: $ISSUE_URL  (added snap/$SNAP_NAME)"
+                    LABELLED=$((LABELLED + 1))
+                else
+                    ERR_MSG=$(cat /tmp/gh-label-err 2>/dev/null || echo "unknown error")
+                    echo "FAILED: $ISSUE_URL — $ERR_MSG" >&2
+                    LABEL_FAILED=$((LABEL_FAILED + 1))
+                fi
+            done
+            echo ""
+            echo "Issues labelled : $LABELLED"
+            echo "Labels failed   : $LABEL_FAILED"
+            echo "::endgroup::"
+
+            if [[ "$LABEL_FAILED" -gt 0 ]]; then
+                echo "WARNING: $LABEL_FAILED cross-snap duplicate(s) could not be labelled in $ISSUE_REPO." >&2
             fi
         fi
     else
