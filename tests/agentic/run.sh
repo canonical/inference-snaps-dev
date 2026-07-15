@@ -93,9 +93,6 @@ if [[ "$ERROR_COUNT" -gt 0 ]]; then
             echo ""
             echo "::group::[$ISSUE_STATUS] $ISSUE_TITLE"
             echo "Title: $ISSUE_TITLE"
-            echo ""
-            echo -n "Labels: "
-            jq -r ".results[$i].suggested_labels | join(\", \")" snap-triage-report.json
             if [[ "$ISSUE_STATUS" == "DUPLICATE" ]]; then
                 echo ""
                 echo "Duplicate of: $(jq -r ".results[$i].duplicate_of_url // \"(unknown)\"" snap-triage-report.json)"
@@ -137,10 +134,11 @@ if [[ "$ERROR_COUNT" -gt 0 ]]; then
                 ISSUE_TITLE=$(jq -r ".results[$i].suggested_title" snap-triage-report.json)
 
                 # Build the API payload straight from the triage report.
-                PAYLOAD=$(jq -c "{
+                PAYLOAD=$(jq -c --arg snap_label "snap/$SNAP_NAME" "{
                     title: .results[$i].suggested_title,
                     body:  .results[$i].suggested_body,
-                    labels: (.results[$i].suggested_labels // [])
+                    labels: [\"bot\", \$snap_label],
+                    type: \"Bug\"
                 }" snap-triage-report.json)
 
                 HTTP_BODY=$(curl -sS -w '\n%{http_code}' -X POST \

@@ -107,11 +107,9 @@ are already tracked and which are new.
                           "Detected by CI run: <ci_run_url>"
    - To reproduce       ← finding.reproduction
    - Snap version       ← report.environment.snap_list_output (as a shell code block)
-   - System information ← report.environment.show_machine_output (wrapped in the
-                          <details> block the template specifies)>
+    - System information ← report.environment.show_machine_output (wrapped in the
+                           <details> block the template specifies)>
 
-   Suggested labels: <comma-separated list — always includes "bot" and the snap name in the format `snap/<snap name>`>
-   Issue type: Bug
    ---
 
    Finding 2: <finding title>
@@ -123,13 +121,11 @@ are already tracked and which are new.
    Suggested body:
    <same structure as above>
 
-   Suggested labels: <comma-separated list — always includes "bot" and the snap name in the format `snap/<snap name>`>
-   Issue type: Bug
    ---
    ```
 
    Print one block per error finding. Use `DUPLICATE` or `NEW` for Status.
-   Always include the suggested title, body, and labels regardless of status — for
+   Always include the suggested title and body regardless of status — for
    duplicates this makes it easy to update the existing issue with fresh reproduction
    steps and environment details.
    Do not skip any error finding.
@@ -142,27 +138,23 @@ are already tracked and which are new.
      "new_count": 1,
      "duplicate_count": 1,
      "results": [
-       {
-         "finding_title": "...",
-         "status": "NEW",
-         "suggested_title": "...",
-         "suggested_body": "<issue body using sections from the fetched bug_report.yaml template>",
-         "suggested_labels": ["bot", "snap/smollm2"],
-         "issue_type": "Bug"
-       },
-       {
-         "finding_title": "...",
-         "status": "DUPLICATE",
-         "duplicate_of_number": 42,
-         "duplicate_of_url": "https://github.com/canonical/inference-snaps/issues/42",
-         "duplicate_of_state": "closed",
-         "duplicate_of_finding": null,
-         "duplicate_reason": "...",
-         "suggested_title": "...",
-         "suggested_body": "<issue body using sections from the fetched bug_report.yaml template>",
-         "suggested_labels": ["bot", "snap/smollm2"],
-         "issue_type": "Bug"
-       }
+         {
+           "finding_title": "...",
+           "status": "NEW",
+           "suggested_title": "...",
+           "suggested_body": "<issue body using sections from the fetched bug_report.yaml template>"
+         },
+         {
+           "finding_title": "...",
+           "status": "DUPLICATE",
+           "duplicate_of_number": 42,
+           "duplicate_of_url": "https://github.com/canonical/inference-snaps/issues/42",
+           "duplicate_of_state": "closed",
+           "duplicate_of_finding": null,
+           "duplicate_reason": "...",
+           "suggested_title": "...",
+           "suggested_body": "<issue body using sections from the fetched bug_report.yaml template>"
+         }
      ]
    }
    ```

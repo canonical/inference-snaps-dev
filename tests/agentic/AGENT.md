@@ -278,8 +278,7 @@ Each entry in `findings` must follow this structure:
   "description": "Clear description of what went wrong and what you were testing.",
   "reproduction": "Exact shell commands to reproduce, in order. This maps directly to the 'To reproduce' field in the GitHub issue template.",
   "observed": "Actual command output or error messages.",
-  "expected": "What should have happened instead.",
-  "labels": ["bot", "$SNAP_NAME"]
+  "expected": "What should have happened instead."
 }
 ```
 
@@ -307,10 +306,6 @@ Each entry in `findings` must follow this structure:
   connected but that nothing you tested actually needed).
 - `"info"` — informational observation with no action required.
 
-`labels` must always include `"bot"` and the snap name (e.g. `"smollm2"`). Do not add
-any other labels.
-
-### Consolidate symptoms of one root cause
 
 **Report root causes, not symptoms.** Before writing findings, group everything you
 observed by underlying cause. When several failures share a single root cause — most
