@@ -6,6 +6,14 @@ export SNAP_CHANNEL="${SNAP_CHANNEL:-edge}"
 export OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}"
 export OPENROUTER_MODEL="${OPENROUTER_MODEL:-deepseek/deepseek-v4-flash}"
 
+# Issue creation config. Issues are filed in a *different* repo than the one running
+# this workflow, so a fine-grained PAT scoped to $ISSUE_REPO (Issues: read & write) is
+# required — the default GITHUB_TOKEN cannot write cross-repo.
+export ISSUE_REPO="${ISSUE_REPO:-canonical/inference-snaps}"
+export ISSUE_CREATE_TOKEN="${ISSUE_CREATE_TOKEN:-}"
+# Gate: only actually create issues when explicitly enabled (default: dry-run/log only).
+export CREATE_ISSUES="${CREATE_ISSUES:-false}"
+
 if [[ -z "${OPENROUTER_API_KEY:-}" ]]; then
     echo "ERROR: OPENROUTER_API_KEY is not set in this shell." >&2
     echo "Export it first, e.g.: export OPENROUTER_API_KEY=sk-or-..." >&2
@@ -100,6 +108,70 @@ if [[ "$ERROR_COUNT" -gt 0 ]]; then
             echo "------------------------------------------------------------------------"
             echo "::endgroup::"
         done
+
+        # ---------------------------------------------------------------------
+        # Create GitHub issues for NEW findings in the tracker repo ($ISSUE_REPO).
+        # Duplicates are intentionally left as log-only (see triage report above).
+        # ---------------------------------------------------------------------
+        NEW_INDICES=$(jq -r '[.results | to_entries[] | select(.value.status == "NEW") | .key] | .[]' snap-triage-report.json)
+
+        if [[ "$CREATE_ISSUES" != "true" ]]; then
+            if [[ -n "$NEW_INDICES" ]]; then
+                echo ""
+                echo "Issue creation is disabled (create_issues=false); $NEW_COUNT NEW finding(s) were NOT filed."
+                echo "Re-run the workflow with create_issues=true to file them in $ISSUE_REPO."
+            fi
+        elif [[ -z "${ISSUE_CREATE_TOKEN}" ]]; then
+            echo ""
+            echo "WARNING: create_issues=true but ISSUE_CREATE_TOKEN is empty; cannot create issues in $ISSUE_REPO." >&2
+            echo "Set the ISSUE_CREATE_TOKEN secret (fine-grained PAT with Issues: read & write on $ISSUE_REPO)." >&2
+        elif [[ -z "$NEW_INDICES" ]]; then
+            echo ""
+            echo "No NEW findings to file — nothing to create in $ISSUE_REPO."
+        else
+            echo ""
+            echo "::group::Creating GitHub issues in $ISSUE_REPO"
+            CREATED=0
+            FAILED=0
+            for i in $NEW_INDICES; do
+                ISSUE_TITLE=$(jq -r ".results[$i].suggested_title" snap-triage-report.json)
+
+                # Build the API payload straight from the triage report.
+                PAYLOAD=$(jq -c "{
+                    title: .results[$i].suggested_title,
+                    body:  .results[$i].suggested_body,
+                    labels: (.results[$i].suggested_labels // [])
+                }" snap-triage-report.json)
+
+                HTTP_BODY=$(curl -sS -w '\n%{http_code}' -X POST \
+                    -H "Authorization: Bearer $ISSUE_CREATE_TOKEN" \
+                    -H "Accept: application/vnd.github+json" \
+                    -H "X-GitHub-Api-Version: 2022-11-28" \
+                    "https://api.github.com/repos/$ISSUE_REPO/issues" \
+                    -d "$PAYLOAD" 2>/dev/null || true)
+
+                HTTP_CODE=$(printf '%s' "$HTTP_BODY" | tail -n1)
+                RESPONSE=$(printf '%s' "$HTTP_BODY" | sed '$d')
+
+                if [[ "$HTTP_CODE" == "201" ]]; then
+                    ISSUE_URL=$(printf '%s' "$RESPONSE" | jq -r '.html_url // empty')
+                    echo "Created: $ISSUE_URL  ($ISSUE_TITLE)"
+                    CREATED=$((CREATED + 1))
+                else
+                    ERR_MSG=$(printf '%s' "$RESPONSE" | jq -r '.message // "unknown error"' 2>/dev/null || echo "unknown error")
+                    echo "FAILED (HTTP $HTTP_CODE): $ISSUE_TITLE — $ERR_MSG" >&2
+                    FAILED=$((FAILED + 1))
+                fi
+            done
+            echo ""
+            echo "Issues created : $CREATED"
+            echo "Issues failed  : $FAILED"
+            echo "::endgroup::"
+
+            if [[ "$FAILED" -gt 0 ]]; then
+                echo "WARNING: $FAILED issue(s) could not be created in $ISSUE_REPO." >&2
+            fi
+        fi
     else
         echo "WARNING: triage agent did not produce a valid /tmp/snap-triage-report.json" >&2
     fi
