@@ -1,8 +1,8 @@
 # Issue Triage Agent Instructions
 
 Your job is to compare the error findings from a snap test run against the currently open
-issues on the `canonical/inference-snaps` GitHub repository, and report which findings
-are already tracked and which are new.
+issues on the `$ISSUE_REPO` GitHub repository (defaults to `canonical/inference-snaps`),
+and report which findings are already tracked and which are new.
 
 ## Steps
 
@@ -19,7 +19,7 @@ are already tracked and which are new.
    always match the current template structure.
 
    ```
-   curl -s "https://raw.githubusercontent.com/canonical/inference-snaps/main/.github/ISSUE_TEMPLATE/bug_report.yaml"
+   curl -s "https://raw.githubusercontent.com/$ISSUE_REPO/main/.github/ISSUE_TEMPLATE/bug_report.yaml"
    ```
 
    Read the `body` fields to understand what sections are expected and in what order.
@@ -31,7 +31,7 @@ are already tracked and which are new.
    Fetch only **open** issues — these are the duplicate targets:
 
    ```
-   curl -s "https://api.github.com/repos/canonical/inference-snaps/issues?state=open&per_page=100"
+   curl -s "https://api.github.com/repos/$ISSUE_REPO/issues?state=open&per_page=100"
    ```
 
    If you get back fewer than 100 issues, one page is enough. If the response contains

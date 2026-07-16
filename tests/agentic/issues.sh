@@ -78,6 +78,19 @@ else
         ISSUE_TITLE=$(jq -r ".results[$i].suggested_title" snap-triage-report.json)
         ISSUE_BODY=$(jq -r ".results[$i].suggested_body" snap-triage-report.json)
 
+        # Guard against missing fields: jq -r prints the literal "null" for an
+        # absent key, which would otherwise file a malformed issue.
+        if [[ -z "$ISSUE_TITLE" || "$ISSUE_TITLE" == "null" ]]; then
+            echo "SKIPPED: result[$i] has no suggested_title; not creating an issue." >&2
+            FAILED=$((FAILED + 1))
+            continue
+        fi
+        if [[ -z "$ISSUE_BODY" || "$ISSUE_BODY" == "null" ]]; then
+            echo "SKIPPED: '$ISSUE_TITLE' has no suggested_body; not creating an issue." >&2
+            FAILED=$((FAILED + 1))
+            continue
+        fi
+
         # Step 1: create the issue with gh's builtin flags (auth, base URL and
         # versioning are handled for us; GH_TOKEN scopes it to the cross-repo PAT).
         if ISSUE_URL=$(GH_TOKEN="$ISSUE_CREATE_TOKEN" gh issue create \

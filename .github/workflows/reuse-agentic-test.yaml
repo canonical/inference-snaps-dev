@@ -36,7 +36,7 @@ on:
         required: true
       issue-create-token:
         description: GitHub token used to create issues in the issue tracker repo
-        required: true
+        required: false
 
 jobs:
   ai-test:
@@ -74,6 +74,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.openrouter-api-key }}
           OPENROUTER_MODEL: ${{ inputs.openrouter-model }}
+          ISSUE_REPO: ${{ inputs.issue-repo }}
         run: ./triage.sh
 
       # Phase 3: print, create and cross-snap-label GitHub issues from the

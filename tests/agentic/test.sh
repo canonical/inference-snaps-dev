@@ -38,7 +38,9 @@ workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MO
 echo "::endgroup::"
 
 # Pull the JSON report the agent wrote; fail if it is missing.
-REPORT_JSON=$(workshop exec -- sh -c 'cat /tmp/snap-test-report.json 2>/dev/null')
+# `|| true` keeps a failing workshop exec (e.g. missing report file) from
+# aborting the script under `set -e` before the explicit emptiness check below.
+REPORT_JSON=$(workshop exec -- sh -c 'cat /tmp/snap-test-report.json 2>/dev/null' || true)
 
 if [[ -z "$REPORT_JSON" ]]; then
     echo "ERROR: agent did not write /tmp/snap-test-report.json" >&2

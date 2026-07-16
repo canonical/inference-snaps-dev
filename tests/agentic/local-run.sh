@@ -13,7 +13,9 @@ set -euo pipefail
 # Launch the workshop up front and make sure it is always removed on exit,
 # regardless of which phase fails.
 workshop launch || true
-trap 'workshop remove' EXIT
+# `|| true` keeps a cleanup failure from overriding the script's real exit
+# status (or aborting cleanup) under `set -e`.
+trap 'workshop remove || true' EXIT
 # Phase 1: testing. test.sh launches the workshop (idempotent) and writes the
 # report; it does not remove the workshop or gate the verdict.
 ./test.sh

@@ -15,6 +15,9 @@ set -euo pipefail
 
 export OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}"
 export OPENROUTER_MODEL="${OPENROUTER_MODEL:-deepseek/deepseek-v4-flash}"
+# Tracker repo the triage agent compares findings against; keep it consistent
+# with the workflow's `issue-repo` input and issues.sh's default.
+export ISSUE_REPO="${ISSUE_REPO:-canonical/inference-snaps}"
 
 if [[ -z "${OPENROUTER_API_KEY:-}" ]]; then
     echo "ERROR: OPENROUTER_API_KEY is not set in this shell." >&2
@@ -27,13 +30,15 @@ if [[ ! -f snap-test-report.json ]]; then
 fi
 
 echo "::group::Triage Agent Output"
-workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MODEL="$OPENROUTER_MODEL" --env GITHUB_SERVER_URL="${GITHUB_SERVER_URL:-}" --env GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-}" --env GITHUB_RUN_ID="${GITHUB_RUN_ID:-}" -- \
+workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MODEL="$OPENROUTER_MODEL" --env ISSUE_REPO="$ISSUE_REPO" --env GITHUB_SERVER_URL="${GITHUB_SERVER_URL:-}" --env GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-}" --env GITHUB_RUN_ID="${GITHUB_RUN_ID:-}" -- \
     opencode run --auto --log-level ERROR \
     --model "openrouter/$OPENROUTER_MODEL" \
     "$(cat TRIAGE.md)" || true
 echo "::endgroup::"
 
-TRIAGE_JSON=$(workshop exec -- sh -c 'cat /tmp/snap-triage-report.json 2>/dev/null')
+# `|| true` keeps a failing workshop exec (e.g. missing report file) from
+# aborting the script under `set -e` before the JSON validity check below.
+TRIAGE_JSON=$(workshop exec -- sh -c 'cat /tmp/snap-triage-report.json 2>/dev/null' || true)
 if [[ -z "$TRIAGE_JSON" ]] || ! echo "$TRIAGE_JSON" | jq . > /dev/null 2>&1; then
     echo "ERROR: triage agent did not produce a valid /tmp/snap-triage-report.json" >&2
     exit 1
