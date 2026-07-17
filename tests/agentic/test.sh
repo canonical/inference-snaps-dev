@@ -25,21 +25,15 @@ if [[ -z "${OPENROUTER_API_KEY:-}" ]]; then
     exit 1
 fi
 
-# Launch the workshop if it isn't already running. It is removed by a later
-# workflow step (or by local-run.sh's trap when run locally), so we do NOT remove it
-# here — later steps reuse the same running workshop.
+# Launch the workshop if it isn't already running; a later step removes it.
 workshop launch || true
 
-echo "::group::Testing Agent Output"
 workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MODEL="$OPENROUTER_MODEL" --env SNAP_NAME="$SNAP_NAME" --env SNAP_CHANNEL="$SNAP_CHANNEL" --env GITHUB_SERVER_URL="${GITHUB_SERVER_URL:-}" --env GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-}" --env GITHUB_RUN_ID="${GITHUB_RUN_ID:-}" -- \
     opencode run --auto --log-level ERROR \
     --model "openrouter/$OPENROUTER_MODEL" \
     "$(cat AGENT.md)" || true
-echo "::endgroup::"
 
-# Pull the JSON report the agent wrote; fail if it is missing.
-# `|| true` keeps a failing workshop exec (e.g. missing report file) from
-# aborting the script under `set -e` before the explicit emptiness check below.
+# Pull the JSON report the agent wrote; fail if it is missing or invalid.
 REPORT_JSON=$(workshop exec -- sh -c 'cat /tmp/snap-test-report.json 2>/dev/null' || true)
 
 if [[ -z "$REPORT_JSON" ]]; then
@@ -47,7 +41,6 @@ if [[ -z "$REPORT_JSON" ]]; then
     exit 1
 fi
 
-# Validate JSON and extract verdict.
 if ! echo "$REPORT_JSON" | jq . > /dev/null 2>&1; then
     echo "ERROR: /tmp/snap-test-report.json is not valid JSON:" >&2
     echo "$REPORT_JSON" >&2
@@ -55,10 +48,7 @@ if ! echo "$REPORT_JSON" | jq . > /dev/null 2>&1; then
 fi
 
 echo "$REPORT_JSON" > snap-test-report.json
-
-echo "::group::Test Report (JSON)"
 jq . snap-test-report.json
-echo "::endgroup::"
 
 VERDICT=$(jq -r '.verdict // "UNKNOWN"' snap-test-report.json)
 SUMMARY=$(jq -r '.summary // "(no summary)"' snap-test-report.json)
@@ -69,7 +59,7 @@ echo "Verdict : $VERDICT"
 echo "Summary : $SUMMARY"
 echo "Errors  : $ERROR_COUNT"
 
-# Expose the verdict and error count to subsequent workflow steps so they can
+# Expose the verdict and error count as GitHub step outputs so later steps can
 # gate on them (e.g. only triage when there are error findings).
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
     {
