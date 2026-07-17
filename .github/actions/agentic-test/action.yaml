@@ -1,10 +1,15 @@
 # Composite action that runs the AI (agentic) snap test via Workshop & OpenCode.
 # It is intended to be called by a snap repository's workflow.
 #
+# The test scripts and workshop project live alongside this action in the same
+# repository (tests/agentic), so they are versioned together with the action
+# and no caller checkout is required — the snap under test is pulled from the
+# Snap Store by channel.
+#
 # Each phase is kept as its own step so that, just like the previous reusable
 # workflow, the GitHub Actions log renders one collapsible group per phase
-# (checkout, workshop launch, testing agent, triage, issue filing, teardown,
-# report upload and verdict gate).
+# (workshop launch, testing agent, triage, issue filing, teardown, report
+# upload and verdict gate).
 
 name: AI Snap Test via Workshop & OpenCode
 description: Run the agentic snap test via Workshop & OpenCode and gate on its verdict.
@@ -40,22 +45,25 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+    # Resolve the agentic test directory that ships with this action and expose
+    # it as an env var so later steps can use it as their working directory and
+    # as the workshop project path.
+    - name: Resolve agentic test directory
+      shell: bash
+      run: |
+        echo "AGENTIC_DIR=$(realpath "$GITHUB_ACTION_PATH/../../../tests/agentic")" >> "$GITHUB_ENV"
 
     - name: Launch Workshop
       uses: canonical/launch-workshop@v1
       with:
-        project: dev/tests/agentic
+        project: ${{ env.AGENTIC_DIR }}
 
     # Phase 1: run the testing agent and produce snap-test-report.json.
     # Exposes `error_count` and `verdict` outputs consumed by later steps.
     - name: Run OpenCode Testing Agent
       id: test
       shell: bash
-      working-directory: dev/tests/agentic
+      working-directory: ${{ env.AGENTIC_DIR }}
       env:
         SNAP_NAME: ${{ inputs.snap-name }}
         SNAP_CHANNEL: ${{ inputs.snap-channel }}
@@ -69,7 +77,7 @@ runs:
       id: triage
       if: steps.test.outputs.error_count > 0
       shell: bash
-      working-directory: dev/tests/agentic
+      working-directory: ${{ env.AGENTIC_DIR }}
       env:
         OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
         OPENROUTER_MODEL: ${{ inputs.openrouter-model }}
@@ -81,7 +89,7 @@ runs:
     - name: File and label GitHub issues
       if: steps.test.outputs.error_count > 0 && steps.triage.outcome == 'success'
       shell: bash
-      working-directory: dev/tests/agentic
+      working-directory: ${{ env.AGENTIC_DIR }}
       env:
         SNAP_NAME: ${{ inputs.snap-name }}
         CREATE_ISSUES: ${{ inputs.create-issues }}
@@ -93,7 +101,7 @@ runs:
     - name: Remove workshop
       if: always()
       shell: bash
-      working-directory: dev/tests/agentic
+      working-directory: ${{ env.AGENTIC_DIR }}
       run: workshop remove || true
 
     - name: Upload test reports
@@ -102,8 +110,8 @@ runs:
       with:
         name: snap-test-reports
         path: |
-          dev/tests/agentic/snap-test-report.json
-          dev/tests/agentic/snap-triage-report.json
+          ${{ env.AGENTIC_DIR }}/snap-test-report.json
+          ${{ env.AGENTIC_DIR }}/snap-triage-report.json
         if-no-files-found: warn
 
     # Fail the job if the testing agent's verdict was not PASS. Runs last so
@@ -111,7 +119,7 @@ runs:
     - name: Enforce test verdict
       if: always()
       shell: bash
-      working-directory: dev/tests/agentic
+      working-directory: ${{ env.AGENTIC_DIR }}
       run: |
         if [[ "${{ steps.test.outputs.verdict }}" != "PASS" ]]; then
           echo "Test FAILED (verdict: ${{ steps.test.outputs.verdict }})" >&2
