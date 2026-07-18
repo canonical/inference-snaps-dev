@@ -53,21 +53,21 @@ runs:
       run: |
         echo "::group::Resolve agentic test directory"
         trap 'echo "::endgroup::"' EXIT
-        AGENTIC_DIR="$(realpath "$GITHUB_ACTION_PATH/../../../tests/agentic")"
-        echo "AGENTIC_DIR=$AGENTIC_DIR" >> "$GITHUB_ENV"
-        echo "Resolved agentic test directory: $AGENTIC_DIR"
+        TEST_DIR="$(realpath "$GITHUB_ACTION_PATH/../../../tests/agentic")"
+        echo "TEST_DIR=$TEST_DIR" >> "$GITHUB_ENV"
+        echo "Resolved agentic test directory: $TEST_DIR"
 
     - name: Launch Workshop
       uses: canonical/launch-workshop@v1
       with:
-        project: ${{ env.AGENTIC_DIR }}
+        project: ${{ env.TEST_DIR }}
 
     # Phase 1: run the testing agent and produce snap-test-report.json.
     # Exposes `error_count` and `verdict` outputs consumed by later steps.
     - name: Run OpenCode Testing Agent
       id: test
       shell: bash
-      working-directory: ${{ env.AGENTIC_DIR }}
+      working-directory: ${{ env.TEST_DIR }}
       env:
         SNAP_NAME: ${{ inputs.snap-name }}
         SNAP_CHANNEL: ${{ inputs.snap-channel }}
@@ -84,7 +84,7 @@ runs:
       id: triage
       if: steps.test.outputs.error_count > 0
       shell: bash
-      working-directory: ${{ env.AGENTIC_DIR }}
+      working-directory: ${{ env.TEST_DIR }}
       env:
         OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
         OPENROUTER_MODEL: ${{ inputs.openrouter-model }}
@@ -98,7 +98,7 @@ runs:
     - name: Summarise duplicate issues
       if: steps.test.outputs.error_count > 0 && steps.triage.outcome == 'success'
       shell: bash
-      working-directory: ${{ env.AGENTIC_DIR }}
+      working-directory: ${{ env.TEST_DIR }}
       run: |
         echo "::group::Summarise duplicate issues"
         trap 'echo "::endgroup::"' EXIT
@@ -108,7 +108,7 @@ runs:
     - name: Print new issues
       if: steps.test.outputs.error_count > 0 && steps.triage.outcome == 'success' && inputs.create-issues != 'true'
       shell: bash
-      working-directory: ${{ env.AGENTIC_DIR }}
+      working-directory: ${{ env.TEST_DIR }}
       env:
         ISSUE_REPO: ${{ inputs.issue-repo }}
       run: |
@@ -120,7 +120,7 @@ runs:
     - name: Create new issues
       if: steps.test.outputs.error_count > 0 && steps.triage.outcome == 'success' && inputs.create-issues == 'true'
       shell: bash
-      working-directory: ${{ env.AGENTIC_DIR }}
+      working-directory: ${{ env.TEST_DIR }}
       env:
         SNAP_NAME: ${{ inputs.snap-name }}
         ISSUE_REPO: ${{ inputs.issue-repo }}
@@ -136,7 +136,7 @@ runs:
     - name: Label cross-snap duplicate issues
       if: steps.test.outputs.error_count > 0 && steps.triage.outcome == 'success' && inputs.create-issues == 'true'
       shell: bash
-      working-directory: ${{ env.AGENTIC_DIR }}
+      working-directory: ${{ env.TEST_DIR }}
       env:
         SNAP_NAME: ${{ inputs.snap-name }}
         ISSUE_REPO: ${{ inputs.issue-repo }}
@@ -150,23 +150,30 @@ runs:
     - name: Remove workshop
       if: always()
       shell: bash
-      working-directory: ${{ env.AGENTIC_DIR }}
+      working-directory: ${{ env.TEST_DIR }}
       run: |
         echo "::group::Remove workshop"
         trap 'echo "::endgroup::"' EXIT
         workshop remove || true
 
-    - name: Upload test reports
+    - name: Upload test report
       if: always()
       uses: actions/upload-artifact@v7
       with:
-        name: snap-test-reports
-        path: |
-          ${{ env.AGENTIC_DIR }}/snap-test-report.json
-          ${{ env.AGENTIC_DIR }}/snap-triage-report.json
-        # Store the JSON reports without compression so they are kept as plain
-        # files inside the artifact rather than a compressed archive.
-        compression-level: 0
+        name: snap-test-report
+        path: ${{ env.TEST_DIR }}/snap-test-report.json
+        # Upload the report as a plain file rather than a zip archive.
+        archive: false
+        if-no-files-found: warn
+
+    - name: Upload triage report
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: snap-triage-report
+        path: ${{ env.TEST_DIR }}/snap-triage-report.json
+        # Upload the report as a plain file rather than a zip archive.
+        archive: false
         if-no-files-found: warn
 
     # Fail the job if the testing agent's verdict was not PASS. Runs last so
@@ -174,7 +181,7 @@ runs:
     - name: Enforce test verdict
       if: always()
       shell: bash
-      working-directory: ${{ env.AGENTIC_DIR }}
+      working-directory: ${{ env.TEST_DIR }}
       run: |
         echo "::group::Enforce test verdict"
         VERDICT="${{ steps.test.outputs.verdict }}"
