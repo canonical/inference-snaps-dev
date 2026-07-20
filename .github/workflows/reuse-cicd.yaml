@@ -18,7 +18,8 @@ on:
         type: string
         default: '["ubuntu-24.04", "ubuntu-24.04-arm"]'
 
-      build-init-script:
+      build-init-script: # Deprecated
+        deprecationMessage: Supply a Makefile with 'make init' target instead of passing a script name. 
         description: Script to run before building the snap
         required: false
         type: string
