@@ -27,7 +27,7 @@ on:
           - '[["self-hosted", "amd64"], ["self-hosted", "arm64"]]'
         required: false
         type: string
-        default: '["ubuntu-24.04", "ubuntu-24.04-arm"]'
+        default: '["ubuntu-latest"]'
       store-track:
         description: Snap Store track to publish to
         required: false
