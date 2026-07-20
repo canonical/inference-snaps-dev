@@ -19,8 +19,10 @@ on:
         required: true
         type: string
       init-build-script: # Deprecated
-        deprecationMessage: Supply a Makefile with 'make init' target instead of passing a script name. 
-        description: Script to run before building the snap. 
+        description: |
+          Script to run before building the snap. 
+          
+          Deprecated: Supply a Makefile with 'make init' target instead of passing a script name. 
         required: false
         type: string
     secrets:
