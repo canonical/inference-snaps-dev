@@ -53,7 +53,7 @@ jobs:
 
       - name: Init build environment
         run: |
-          # Try Makefile init target first
+          # Try make init
           if [ -f Makefile ]; then
             if make init; then
               exit 0
@@ -63,7 +63,7 @@ jobs:
             fi
           fi
           
-          # Try deprecated download-models.sh script if Makefile init didn't work
+          # Try deprecated download-models.sh script
           if [ -f download-models.sh ]; then
             ./download-models.sh
             exit 0
