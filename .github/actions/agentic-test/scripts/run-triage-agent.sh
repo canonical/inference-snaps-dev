@@ -6,26 +6,16 @@ set -euo pipefail
 #
 # This step compares the error findings in snap-test-report.json against the
 # open GitHub issues and classifies each as NEW or DUPLICATE. It reuses the
-# workshop already launched by test.sh and reads the test report the agent
+# workshop already launched by run-test-agent.sh and reads the test report the agent
 # wrote to /tmp inside the workshop.
 #
 # It only makes sense to run this when the test report contains error
-# findings; the workflow gates it on test.sh's error_count output.
+# findings; the workflow gates it on run-test-agent.sh's error_count output.
 # ---------------------------------------------------------------------------
 
-export OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}"
-export OPENROUTER_MODEL="${OPENROUTER_MODEL:-deepseek/deepseek-v4-flash}"
-# Tracker repo the triage agent compares findings against; keep it consistent
-# with the workflow's `issue-repo` input and the issue scripts' default.
-export ISSUE_REPO="${ISSUE_REPO:-canonical/inference-snaps}"
-
-if [[ -z "${OPENROUTER_API_KEY:-}" ]]; then
-    echo "ERROR: OPENROUTER_API_KEY is not set in this shell." >&2
-    exit 1
-fi
 
 if [[ ! -f snap-test-report.json ]]; then
-    echo "ERROR: snap-test-report.json not found; run test.sh first." >&2
+    echo "ERROR: snap-test-report.json not found; run-test-agent.sh first." >&2
     exit 1
 fi
 

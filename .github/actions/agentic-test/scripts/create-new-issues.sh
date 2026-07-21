@@ -11,12 +11,9 @@ set -euo pipefail
 # the default GITHUB_TOKEN cannot write cross-repo.
 # ---------------------------------------------------------------------------
 
-export SNAP_NAME="${SNAP_NAME:-smollm2}"
-export ISSUE_REPO="${ISSUE_REPO:-canonical/inference-snaps}"
-export ISSUE_CREATE_TOKEN="${ISSUE_CREATE_TOKEN:-}"
 
 if [[ ! -f snap-triage-report.json ]]; then
-    echo "ERROR: snap-triage-report.json not found; run triage.sh first." >&2
+    echo "ERROR: snap-triage-report.json not found; run-triage-agent.sh first." >&2
     exit 1
 fi
 

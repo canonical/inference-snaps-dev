@@ -1,17 +1,4 @@
-# Composite action that runs the AI (agentic) snap test via Workshop & OpenCode.
-# It is intended to be called by a snap repository's workflow.
-#
-# The test scripts and workshop project live alongside this action in the same
-# repository (tests/agentic), so they are versioned together with the action
-# and no caller checkout is required — the snap under test is pulled from the
-# Snap Store by channel.
-#
-# All log grouping lives here: each phase is wrapped in a named ::group:: so the
-# GitHub Actions log renders one collapsible group per phase. The phase scripts
-# themselves emit no group markers (they are also run by the agent inside the
-# workshop, where such markers would leak and corrupt the log).
-
-name: AI Snap Test via Workshop & OpenCode
+name: Agentic test
 description: Run the agentic snap test via Workshop & OpenCode and gate on its verdict.
 
 inputs:
@@ -45,28 +32,19 @@ inputs:
 runs:
   using: composite
   steps:
-    # Resolve the agentic test directory that ships with this action and expose
-    # it as an env var so later steps can use it as their working directory and
-    # as the workshop project path.
-    - name: Resolve agentic test directory
+    - name: Resolve test script directory
       shell: bash
       run: |
-        : Resolve test directory
-        echo "::group::Resolve test directory"
-        trap 'echo "::endgroup::"' EXIT
-        TEST_DIR="$(realpath "$GITHUB_ACTION_PATH/../../../tests/agentic")"
+        : Resolve test script directory
+        TEST_DIR="$(realpath "$GITHUB_ACTION_PATH/scripts")"
         echo "TEST_DIR=$TEST_DIR" >> "$GITHUB_ENV"
-        echo "Resolved test directory: $TEST_DIR"
 
     - name: Launch Workshop
       uses: canonical/launch-workshop@v1
       with:
         project: ${{ env.TEST_DIR }}
 
-    # Phase 1: run the testing agent and produce snap-test-report.json.
-    # Exposes `error_count` and `verdict` outputs consumed by later steps.
-    - name: Perform test
-      id: test
+    - name: Run agentic snap test
       shell: bash
       working-directory: ${{ env.TEST_DIR }}
       env:
@@ -74,95 +52,10 @@ runs:
         SNAP_CHANNEL: ${{ inputs.snap-channel }}
         OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
         OPENROUTER_MODEL: ${{ inputs.openrouter-model }}
-      run: |
-        : Perform test
-        echo "::group::Perform test"
-        trap 'echo "::endgroup::"' EXIT
-        ./test.sh
-
-    # Phase 2: triage the error findings against open issues, producing
-    # snap-triage-report.json. Only runs when the test found error findings.
-    - name: Triage findings
-      id: triage
-      if: steps.test.outputs.error_count > 0
-      shell: bash
-      working-directory: ${{ env.TEST_DIR }}
-      env:
-        OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
-        OPENROUTER_MODEL: ${{ inputs.openrouter-model }}
         ISSUE_REPO: ${{ inputs.issue-repo }}
-      run: |
-        : Triage findings
-        echo "::group::Triage findings"
-        trap 'echo "::endgroup::"' EXIT
-        ./triage.sh
-
-    # Phase 3a: summarise DUPLICATE findings (read-only).
-    - name: Summarise duplicate issues
-      if: steps.test.outputs.error_count > 0 && steps.triage.outcome == 'success'
-      shell: bash
-      working-directory: ${{ env.TEST_DIR }}
-      run: |
-        : Summarise duplicate issues
-        echo "::group::Summarise duplicate issues"
-        trap 'echo "::endgroup::"' EXIT
-        ./summarise-duplicate-issues.sh
-
-    # Phase 3b: dry-run mode — print NEW findings so they can be filed by hand.
-    - name: Print new issues
-      if: steps.test.outputs.error_count > 0 && steps.triage.outcome == 'success' && inputs.create-issues != 'true'
-      shell: bash
-      working-directory: ${{ env.TEST_DIR }}
-      env:
-        ISSUE_REPO: ${{ inputs.issue-repo }}
-      run: |
-        : Print new issues
-        echo "::group::Print new issues"
-        trap 'echo "::endgroup::"' EXIT
-        ./print-new-issues.sh
-
-    # Phase 3c: create mode — file NEW findings as GitHub issues and summarise.
-    - name: Create new issues
-      if: steps.test.outputs.error_count > 0 && steps.triage.outcome == 'success' && inputs.create-issues == 'true'
-      shell: bash
-      working-directory: ${{ env.TEST_DIR }}
-      env:
-        SNAP_NAME: ${{ inputs.snap-name }}
-        ISSUE_REPO: ${{ inputs.issue-repo }}
+        CREATE_ISSUES: ${{ inputs.create-issues }}
         ISSUE_CREATE_TOKEN: ${{ inputs.issue-create-token }}
-      run: |
-        : Create new issues
-        echo "::group::Create new issues"
-        trap 'echo "::endgroup::"' EXIT
-        ./create-new-issues.sh
-
-
-    # Phase 3d: label existing issues that this run duplicates but that were
-    # first detected on a different snap. Create mode only.
-    - name: Label cross-snap duplicate issues
-      if: steps.test.outputs.error_count > 0 && steps.triage.outcome == 'success' && inputs.create-issues == 'true'
-      shell: bash
-      working-directory: ${{ env.TEST_DIR }}
-      env:
-        SNAP_NAME: ${{ inputs.snap-name }}
-        ISSUE_REPO: ${{ inputs.issue-repo }}
-        ISSUE_CREATE_TOKEN: ${{ inputs.issue-create-token }}
-      run: |
-        : Label cross-snap duplicate issues
-        echo "::group::Label cross-snap duplicate issues"
-        trap 'echo "::endgroup::"' EXIT
-        ./label-cross-snap-duplicates.sh
-
-    # Always tear the workshop down, regardless of earlier failures.
-    - name: Remove workshop
-      if: always()
-      shell: bash
-      working-directory: ${{ env.TEST_DIR }}
-      run: |
-        : Remove workshop
-        echo "::group::Remove workshop"
-        trap 'echo "::endgroup::"' EXIT
-        workshop remove || true
+      run: ./agentic-test.sh
 
     - name: Upload test report
       if: always()
@@ -170,7 +63,6 @@ runs:
       with:
         name: snap-test-report
         path: ${{ env.TEST_DIR }}/snap-test-report.json
-        # Upload the report as a plain file rather than a zip archive.
         archive: false
         if-no-files-found: warn
 
@@ -180,24 +72,5 @@ runs:
       with:
         name: snap-triage-report
         path: ${{ env.TEST_DIR }}/snap-triage-report.json
-        # Upload the report as a plain file rather than a zip archive.
         archive: false
-        if-no-files-found: warn
-
-    # Fail the job if the testing agent's verdict was not PASS. Runs last so
-    # the reports above are always uploaded first, even on failure.
-    - name: Enforce test verdict
-      if: always()
-      shell: bash
-      working-directory: ${{ env.TEST_DIR }}
-      run: |
-        : Enforce test verdict
-        echo "::group::Enforce test verdict"
-        trap 'echo "::endgroup::"' EXIT
-        VERDICT="${{ steps.test.outputs.verdict }}"
-        echo "Verdict: $VERDICT"
-        if [[ "$VERDICT" != "PASS" ]]; then
-          echo "::error::Test FAILED (verdict: $VERDICT)"
-          exit 1
-        fi
-
+        if-no-files-found: ignore

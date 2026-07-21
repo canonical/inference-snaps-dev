@@ -5,11 +5,11 @@ set -euo pipefail
 # Prints a summary of the DUPLICATE triaged findings from
 # snap-triage-report.json — each finding and the existing issue it duplicates.
 # Read-only: labelling of cross-snap duplicates is done by
-# label-cross-snap-duplicates.sh.
+# label-duplicate-issues.sh.
 # ---------------------------------------------------------------------------
 
 if [[ ! -f snap-triage-report.json ]]; then
-    echo "ERROR: snap-triage-report.json not found; run triage.sh first." >&2
+    echo "ERROR: snap-triage-report.json not found; run-triage-agent.sh first." >&2
     exit 1
 fi
 

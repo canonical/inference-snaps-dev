@@ -9,10 +9,9 @@ set -euo pipefail
 # automatically, create-new-issues.sh runs instead.
 # ---------------------------------------------------------------------------
 
-export ISSUE_REPO="${ISSUE_REPO:-canonical/inference-snaps}"
 
 if [[ ! -f snap-triage-report.json ]]; then
-    echo "ERROR: snap-triage-report.json not found; run triage.sh first." >&2
+    echo "ERROR: snap-triage-report.json not found; run-triage-agent.sh first." >&2
     exit 1
 fi
 
