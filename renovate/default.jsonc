@@ -21,12 +21,14 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Update inference-snaps-cli",
+      "description": "Update inference-snaps-cli release and lint action ref",
       "managerFilePatterns": [
-        "snap/snapcraft.yaml"
+        "snap/snapcraft.yaml",
+        ".github/workflows/pr-checks.yaml"
       ],
       "matchStrings": [
-        "https://github\\.com/canonical/inference-snaps-cli/releases/download/(?<currentValue>v[^/]+)/inference-snaps-cli"
+        "https://github\\.com/canonical/inference-snaps-cli/releases/download/(?<currentValue>v[^/]+)/inference-snaps-cli",
+        "canonical/inference-snaps-cli/\\.github/actions/lint-package@(?<currentValue>v[^\\s#]+)"
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "canonical/inference-snaps-cli",
