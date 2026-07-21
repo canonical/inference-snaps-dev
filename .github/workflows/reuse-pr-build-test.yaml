@@ -120,7 +120,6 @@ jobs:
       publish-channel: ${{ inputs.store-track }}/edge/pr-${{ inputs.pr-number }} # E.g. latest/edge/pr-123
     secrets:
       store-credentials: ${{ secrets.store-credentials }}
-      logs-secret: ${{ secrets.logs-secret }}
 
   test:
     needs: [build-and-publish]

@@ -26,9 +26,6 @@ on:
       store-credentials:
         description: Snap Store credentials for publishing the snap to the specified channel
         required: true
-      logs-secret:
-        description: CSV list of words to mask in this job's logs
-        required: false
 
 jobs:
   build:
@@ -36,19 +33,6 @@ jobs:
     runs-on: ${{ fromJSON(inputs.runner) }}
 
     steps:
-      - name: Mask sensitive words in logs
-        env:
-          LOGS_SECRET: ${{ secrets.logs-secret }}
-        run: |
-          # Register each comma-separated word from logs-secret as a masked value.
-          # add-mask is per-job, so this must run in the job that produces the logs.
-          IFS=',' read -ra words <<< "$LOGS_SECRET"
-          for w in "${words[@]}"; do
-            # Trim leading/trailing whitespace
-            w="$(printf '%s' "$w" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-            [ -n "$w" ] && echo "::add-mask::$w"
-          done
-
       - name: Refresh/Install snapd
         run: |
           sudo snap refresh snapd || sudo snap install snapd
