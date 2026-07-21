@@ -184,9 +184,9 @@ runs:
       working-directory: ${{ env.TEST_DIR }}
       run: |
         echo "::group::Enforce test verdict"
+        trap 'echo "::endgroup::"' EXIT
         VERDICT="${{ steps.test.outputs.verdict }}"
         echo "Verdict: $VERDICT"
-        echo "::endgroup::"
         if [[ "$VERDICT" != "PASS" ]]; then
           echo "::error::Test FAILED (verdict: $VERDICT)"
           exit 1
