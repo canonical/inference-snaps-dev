@@ -91,8 +91,8 @@ and report which findings are already tracked and which are new.
                           "Detected by CI run: <ci_run_url>"
    - To reproduce       ← finding.reproduction
    - Snap version       ← report.environment.snap_list_output (as a shell code block)
-    - System information ← report.environment.show_machine_output (wrapped in the
-                           <details> block the template specifies)>
+   - System information ← report.environment.show_machine_output (wrapped in the
+                          <details> block the template specifies)>
 
    ---
 

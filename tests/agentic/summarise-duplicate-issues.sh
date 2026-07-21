@@ -22,11 +22,11 @@ fi
 
 echo "Duplicate finding(s):"
 for i in $DUP_INDICES; do
-    ISSUE_TITLE=$(jq -r ".results[$i].suggested_title" snap-triage-report.json)
+    FINDING_TITLE=$(jq -r ".results[$i].finding_title // .results[$i].suggested_title" snap-triage-report.json)
     DUP_URL=$(jq -r ".results[$i].duplicate_of_url // \"(unknown)\"" snap-triage-report.json)
     DUP_REASON=$(jq -r ".results[$i].duplicate_reason // \"(unknown)\"" snap-triage-report.json)
     echo ""
-    echo "$ISSUE_TITLE"
+    echo "$FINDING_TITLE"
     echo "  Duplicate of: $DUP_URL"
     echo "  Reason      : $DUP_REASON"
 done

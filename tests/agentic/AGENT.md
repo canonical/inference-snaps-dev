@@ -38,7 +38,7 @@ as a real user would.
 >    when run *without* `script` is a harness artifact, **not** a snap defect — never
 >    report it as one.
 > 2. **Interactive prompts.** Some commands ask for confirmation before making a change.
->    Run bare here they will **hang forever**, because there is no terminal to read from.
+>    If run bare here, they will **hang forever**, because there is no terminal to read from.
 >    Exercise them two ways:
 >    - **Non-interactively** with the documented `--assume-yes` flag (or whatever
 >      equivalent the snap documents).
