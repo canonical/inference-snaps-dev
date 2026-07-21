@@ -51,8 +51,7 @@ runs:
     - name: Resolve agentic test directory
       shell: bash
       run: |
-        echo "::group::Resolve agentic test directory"
-        trap 'echo "::endgroup::"' EXIT
+        : Resolve agentic test directory
         TEST_DIR="$(realpath "$GITHUB_ACTION_PATH/../../../tests/agentic")"
         echo "TEST_DIR=$TEST_DIR" >> "$GITHUB_ENV"
         echo "Resolved agentic test directory: $TEST_DIR"
@@ -74,8 +73,7 @@ runs:
         OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
         OPENROUTER_MODEL: ${{ inputs.openrouter-model }}
       run: |
-        echo "::group::Run OpenCode Testing Agent"
-        trap 'echo "::endgroup::"' EXIT
+        : Run OpenCode Testing Agent
         ./test.sh
 
     # Phase 2: triage the error findings against open issues, producing
@@ -90,8 +88,7 @@ runs:
         OPENROUTER_MODEL: ${{ inputs.openrouter-model }}
         ISSUE_REPO: ${{ inputs.issue-repo }}
       run: |
-        echo "::group::Triage findings"
-        trap 'echo "::endgroup::"' EXIT
+        : Triage findings
         ./triage.sh
 
     # Phase 3a: summarise DUPLICATE findings (read-only).
@@ -100,8 +97,7 @@ runs:
       shell: bash
       working-directory: ${{ env.TEST_DIR }}
       run: |
-        echo "::group::Summarise duplicate issues"
-        trap 'echo "::endgroup::"' EXIT
+        : Summarise duplicate issues
         ./summarise-duplicate-issues.sh
 
     # Phase 3b: dry-run mode — print NEW findings so they can be filed by hand.
@@ -112,8 +108,7 @@ runs:
       env:
         ISSUE_REPO: ${{ inputs.issue-repo }}
       run: |
-        echo "::group::Print new issues"
-        trap 'echo "::endgroup::"' EXIT
+        : Print new issues
         ./print-new-issues.sh
 
     # Phase 3c: create mode — file NEW findings as GitHub issues and summarise.
@@ -126,8 +121,7 @@ runs:
         ISSUE_REPO: ${{ inputs.issue-repo }}
         ISSUE_CREATE_TOKEN: ${{ inputs.issue-create-token }}
       run: |
-        echo "::group::Create new issues"
-        trap 'echo "::endgroup::"' EXIT
+        : Create new issues
         ./create-new-issues.sh
 
 
@@ -142,8 +136,7 @@ runs:
         ISSUE_REPO: ${{ inputs.issue-repo }}
         ISSUE_CREATE_TOKEN: ${{ inputs.issue-create-token }}
       run: |
-        echo "::group::Label cross-snap duplicate issues"
-        trap 'echo "::endgroup::"' EXIT
+        : Label cross-snap duplicate issues
         ./label-cross-snap-duplicates.sh
 
     # Always tear the workshop down, regardless of earlier failures.
@@ -152,8 +145,7 @@ runs:
       shell: bash
       working-directory: ${{ env.TEST_DIR }}
       run: |
-        echo "::group::Remove workshop"
-        trap 'echo "::endgroup::"' EXIT
+        : Remove workshop
         workshop remove || true
 
     - name: Upload test report
@@ -183,8 +175,7 @@ runs:
       shell: bash
       working-directory: ${{ env.TEST_DIR }}
       run: |
-        echo "::group::Enforce test verdict"
-        trap 'echo "::endgroup::"' EXIT
+        : Enforce test verdict
         VERDICT="${{ steps.test.outputs.verdict }}"
         echo "Verdict: $VERDICT"
         if [[ "$VERDICT" != "PASS" ]]; then
