@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # ---------------------------------------------------------------------------
 # Phase 2: run the triage agent and produce snap-triage-report.json.
 #
@@ -22,7 +24,7 @@ fi
 workshop exec --env OPENROUTER_API_KEY="$OPENROUTER_API_KEY" --env OPENROUTER_MODEL="$OPENROUTER_MODEL" --env ISSUE_REPO="$ISSUE_REPO" --env GITHUB_SERVER_URL="${GITHUB_SERVER_URL:-}" --env GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-}" --env GITHUB_RUN_ID="${GITHUB_RUN_ID:-}" -- \
     opencode run --auto --log-level ERROR \
     --model "openrouter/$OPENROUTER_MODEL" \
-    "$(cat TRIAGE.md)" || true
+    "$(cat "$SCRIPT_DIR/TRIAGE.md")" || true
 
 TRIAGE_JSON=$(workshop exec -- sh -c 'cat /tmp/snap-triage-report.json 2>/dev/null' || true)
 if [[ -z "$TRIAGE_JSON" ]] || ! echo "$TRIAGE_JSON" | jq . > /dev/null 2>&1; then

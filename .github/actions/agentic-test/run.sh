@@ -19,11 +19,11 @@ fi
 if [[ "${GITHUB_ACTIONS:-}" != "true" ]]; then
     workshop launch
 fi
-trap 'echo "::group::Remove workshop"; workshop remove || true; echo "::endgroup::"' EXIT
+trap 'echo "::group::Remove workshop instance"; workshop remove || true; echo "::endgroup::"' EXIT
 
 # Run the test agent.
 echo "::group::Test agent"
-./run-test-agent.sh
+./scripts/run-test-agent.sh
 echo "::endgroup::"
 
 VERDICT=$(jq -r '.verdict // "UNKNOWN"' snap-test-report.json)
@@ -32,21 +32,21 @@ ERROR_COUNT=$(jq '[.findings[] | select(.severity == "error")] | length' snap-te
 # If anything was found, triage the results and create issues if requested.
 if [[ "$ERROR_COUNT" -gt 0 ]]; then
     echo "::group::Triage agent"
-    ./run-triage-agent.sh
+    ./scripts/run-triage-agent.sh
     echo "::endgroup::"
 
     echo "::group::Duplicate issues"
-    ./print-duplicate-issues.sh
+    ./scripts/print-duplicate-issues.sh
     echo "::endgroup::"
 
     if [[ "${CREATE_ISSUES:-false}" == "true" ]]; then
         echo "::group::Create issues"
-        ./create-new-issues.sh
-        ./label-duplicate-issues.sh
+        ./scripts/create-new-issues.sh
+        ./scripts/label-duplicate-issues.sh
         echo "::endgroup::"
     else
         echo "::group::New issues"
-        ./print-new-issues.sh
+        ./scripts/print-new-issues.sh
         echo "::endgroup::"
     fi
 fi

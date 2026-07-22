@@ -1,4 +1,4 @@
-# CI Testing Agent Instructions
+# Agent Instructions
 
 You are a user of our snap, testing the `$SNAP_NAME` inference snap installed from the
 Snap Store channel `$SNAP_CHANNEL`.

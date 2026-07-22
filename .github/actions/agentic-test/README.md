@@ -18,26 +18,25 @@ through [OpenRouter](https://openrouter.ai).
 
 This directory is a composite GitHub Action plus the scripts and prompts it runs.
 
-| Path          | Role                                                                         |
-|---------------|------------------------------------------------------------------------------|
-| `action.yaml` | The composite action: launches the workshop, runs the test, uploads reports. |
-| `README.md`   | This file.                                                                   |
-| `scripts/`    | Everything executed inside/around the workshop.                              |
+| Path            | Role                                                                         |
+|-----------------|------------------------------------------------------------------------------|
+| `action.yaml`   | The composite action: launches the workshop, runs the test, uploads reports. |
+| `run.sh`        | Orchestrator — runs all phases in order and gates on the verdict.            |
+| `workshop.yaml` | The workshop definition which includes the OpenCode SDK.                     |
+| `scripts/`      | Supporting scripts and prompts executed inside/around the workshop.          |
 
 Inside `scripts/`:
 
-| File                               | Role                                                              |
-|------------------------------------|-------------------------------------------------------------------|
-| `agentic-test.sh`                  | Orchestrator — runs all phases in order and gates on the verdict. |
-| `AGENT.md`                         | Prompt/instructions for the **testing** agent (phase 1).          |
-| `TRIAGE.md`                        | Prompt/instructions for the **triage** agent (phase 2).           |
-| `run-test-agent.sh`                | Phase 1 — run the testing agent, write `snap-test-report.json`.   |
-| `run-triage-agent.sh`              | Phase 2 — run the triage agent, write `snap-triage-report.json`.  |
-| `print-duplicate-issues.sh`        | Print DUPLICATE findings and the issues they match.               |
-| `print-new-issues.sh`              | Dry-run: print NEW findings (title + body) for copy-paste.        |
-| `create-new-issues.sh`             | Create mode: file NEW findings as issues in the tracker repo.     |
-| `label-duplicate-issues.sh`        | Create mode: add this snap's label to shared cross-snap issues.   |
-| `.workshop/agentic-snap-test.yaml` | The workshop definition which includes the OpenCode SDK.          |
+| File                        | Role                                                              |
+|-----------------------------|-------------------------------------------------------------------|
+| `AGENT.md`                  | Prompt/instructions for the **testing** agent (phase 1).          |
+| `TRIAGE.md`                 | Prompt/instructions for the **triage** agent (phase 2).           |
+| `run-test-agent.sh`         | Phase 1 — run the testing agent, write `snap-test-report.json`.   |
+| `run-triage-agent.sh`       | Phase 2 — run the triage agent, write `snap-triage-report.json`.  |
+| `print-duplicate-issues.sh` | Print DUPLICATE findings and the issues they match.               |
+| `print-new-issues.sh`       | Dry-run: print NEW findings (title + body) for copy-paste.        |
+| `create-new-issues.sh`      | Create mode: file NEW findings as issues in the tracker repo.     |
+| `label-duplicate-issues.sh` | Create mode: add this snap's label to shared cross-snap issues.   |
 
 The workshop-generated `.workshop.lock` and the report JSON files are git-ignored.
 
@@ -85,52 +84,55 @@ jobs:
 
 The composite action (`action.yaml`) runs these steps:
 
-1. Resolve the `scripts/` directory of this action and export it as `TEST_DIR`.
-2. Launch the workshop via the `canonical/launch-workshop@v1` action, pointed at
-   `TEST_DIR`.
-3. Run `agentic-test.sh` from `TEST_DIR`, mapping the inputs onto the environment
+1. Launch the workshop via the `canonical/launch-workshop@v1` action, pointed at
+   `${{ github.action_path }}` (where `workshop.yaml` lives).
+2. Run `run.sh` from `${{ github.action_path }}`, mapping the inputs onto the environment
    variables the scripts consume (`SNAP_NAME`, `SNAP_CHANNEL`, `OPENROUTER_API_KEY`,
    `OPENROUTER_MODEL`, `ISSUE_REPO`, `CREATE_ISSUES`, `ISSUE_CREATE_TOKEN`).
-4. Upload `snap-test-report.json` as an artifact (always), and `snap-triage-report.json`
+3. Upload `snap-test-report.json` as an artifact (always), and `snap-triage-report.json`
    if it exists.
 
-The job fails if the test verdict is not `PASS` — `agentic-test.sh` exits non-zero, which
+The job fails if the test verdict is not `PASS` — `run.sh` exits non-zero, which
 fails the step.
 
 ## Running it locally
 
-`agentic-test.sh` reproduces the full flow: launch workshop → test → triage → issues → verdict gate → cleanup.
+`run.sh` reproduces the full flow: launch workshop → test → triage → issues → verdict gate → cleanup.
 
 Prerequisites:
 
-- [`workshop`](https://github.com/canonical/inference-snaps-dev) available on `PATH`.
+- The `workshop` snap installed and available on `PATH`.
 - `opencode`, `jq`, and (for create mode) `gh` installed.
 - An OpenRouter API key.
 
-Run from the `scripts/` directory:
+Store your secrets in local files (e.g. `openrouter.key`, `issue-create.token`) and pass
+them inline so they are never exported to the session or written to shell history.
+Run from the action root directory (`agentic-test/`):
 
 ```bash
-export OPENROUTER_API_KEY=sk-or-...
-export SNAP_NAME=smollm2
-export SNAP_CHANNEL=latest/edge
-
 # Dry run: test, triage, and print any new/duplicate findings (no writes to GitHub).
-./agentic-test.sh
+OPENROUTER_API_KEY="$(cat openrouter.key)" \
+  SNAP_NAME=smollm2 \
+  SNAP_CHANNEL=latest/edge \
+  ./run.sh
 ```
 
 To also file issues and label cross-snap duplicates, provide a token and enable create
 mode:
 
 ```bash
-export ISSUE_REPO=canonical/inference-snaps
-export ISSUE_CREATE_TOKEN=github_pat_...   # Issues: read & write on ISSUE_REPO
-export CREATE_ISSUES=true
-./agentic-test.sh
+OPENROUTER_API_KEY="$(cat openrouter.key)" \
+  ISSUE_CREATE_TOKEN="$(cat issue-create.token)" \
+  ISSUE_REPO=canonical/inference-snaps \
+  CREATE_ISSUES=true \
+  SNAP_NAME=smollm2 \
+  SNAP_CHANNEL=latest/edge \
+  ./run.sh
 ```
 
 ### Environment variables
 
-`agentic-test.sh` reads and re-exports these (with defaults) for its subscripts:
+`run.sh` reads and re-exports these (with defaults) for its subscripts:
 
 | Variable             | Default                      | Purpose                                                        |
 |----------------------|------------------------------|----------------------------------------------------------------|
@@ -142,8 +144,8 @@ export CREATE_ISSUES=true
 | `ISSUE_CREATE_TOKEN` | `""`                         | PAT used to create/label issues in `ISSUE_REPO`.               |
 | `CREATE_ISSUES`      | `false`                      | Whether to write to GitHub or just print findings.             |
 
-You can also run the phases individually — e.g. `./run-test-agent.sh` then
-`./run-triage-agent.sh` — which is handy when iterating on `AGENT.md` or `TRIAGE.md`. The
+You can also run the phases individually — e.g. `./scripts/run-test-agent.sh` then
+`./scripts/run-triage-agent.sh` — which is handy when iterating on `AGENT.md` or `TRIAGE.md`. The
 scripts read the reports the agents wrote to `/tmp` inside the workshop and copy them into
 this directory.
 
