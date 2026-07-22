@@ -18,8 +18,11 @@ on:
         description: Snap Store channel for publishing the snap
         required: true
         type: string
-      init-build-script:
-        description: Script to run before building the snap
+      init-build-script: # Deprecated
+        description: |
+          Script to run before building the snap. 
+          
+          Deprecated: Supply a Makefile with 'make init' target instead of passing a script name. 
         required: false
         type: string
     secrets:
@@ -50,8 +53,26 @@ jobs:
 
       - name: Init build environment
         run: |
+          # Try make init
+          if [ -f Makefile ]; then
+            if make init; then
+              exit 0
+            else
+              # Once deprecated inputs are removed, lack of a "make init" would mean skipping of the initialization.
+              echo "Makefile init target failed. Trying other methods..."
+            fi
+          fi
+          
+          # Try deprecated download-models.sh script
+          if [ -f download-models.sh ]; then
+            ./download-models.sh
+            exit 0
+          fi
+          
+          # Try custom script if provided via the deprecated input
           if [ -n "${{ inputs.init-build-script }}" ]; then
             ./"${{ inputs.init-build-script }}"
+            exit 0
           fi
 
       - name: Build snap
