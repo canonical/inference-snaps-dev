@@ -32,14 +32,21 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Resolve test directory
+      shell: bash
+      run: |
+        : Resolve test directory
+        TEST_DIR="$(realpath "$GITHUB_ACTION_PATH/../../../tests/agentic")"
+        echo "TEST_DIR=$TEST_DIR" >> "$GITHUB_ENV"
+
     - name: Launch Workshop
       uses: canonical/launch-workshop@v1
       with:
-        project: ${{ github.action_path }}
+        project: ${{ env.TEST_DIR }}
 
     - name: Run agentic snap test
       shell: bash
-      working-directory: ${{ github.action_path }}
+      working-directory: ${{ env.TEST_DIR }}
       env:
         SNAP_NAME: ${{ inputs.snap-name }}
         SNAP_CHANNEL: ${{ inputs.snap-channel }}
@@ -55,7 +62,7 @@ runs:
       uses: actions/upload-artifact@v7
       with:
         name: snap-test-report
-        path: ${{ github.action_path }}/snap-test-report.json
+        path: ${{ env.TEST_DIR }}/snap-test-report.json
         archive: false
         if-no-files-found: warn
 
@@ -64,6 +71,6 @@ runs:
       uses: actions/upload-artifact@v7
       with:
         name: snap-triage-report
-        path: ${{ github.action_path }}/snap-triage-report.json
+        path: ${{ env.TEST_DIR }}/snap-triage-report.json
         archive: false
         if-no-files-found: ignore

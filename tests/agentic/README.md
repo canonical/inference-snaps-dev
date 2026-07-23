@@ -16,11 +16,11 @@ through [OpenRouter](https://openrouter.ai).
 
 ## Layout
 
-This directory is a composite GitHub Action plus the scripts and prompts it runs.
+This directory contains the scripts and prompts for the composite GitHub Action whose
+definition lives at `.github/actions/agentic-test/action.yaml`.
 
 | Path            | Role                                                                         |
 |-----------------|------------------------------------------------------------------------------|
-| `action.yaml`   | The composite action: launches the workshop, runs the test, uploads reports. |
 | `run.sh`        | Orchestrator — runs all phases in order and gates on the verdict.            |
 | `workshop.yaml` | The workshop definition which includes the OpenCode SDK.                     |
 | `scripts/`      | Supporting scripts and prompts executed inside/around the workshop.          |
@@ -82,14 +82,16 @@ jobs:
 
 ### What the action does
 
-The composite action (`action.yaml`) runs these steps:
+The composite action (`.github/actions/agentic-test/action.yaml`) runs these steps:
 
-1. Launch the workshop via the `canonical/launch-workshop@v1` action, pointed at
-   `${{ github.action_path }}` (where `workshop.yaml` lives).
-2. Run `run.sh` from `${{ github.action_path }}`, mapping the inputs onto the environment
+1. Resolve `TEST_DIR` to the absolute path of `tests/agentic` (three levels up from the
+   action's own directory at `.github/actions/agentic-test`).
+2. Launch the workshop via the `canonical/launch-workshop@v1` action, pointed at
+   `TEST_DIR` (where `workshop.yaml` lives).
+3. Run `run.sh` from `TEST_DIR`, mapping the inputs onto the environment
    variables the scripts consume (`SNAP_NAME`, `SNAP_CHANNEL`, `OPENROUTER_API_KEY`,
    `OPENROUTER_MODEL`, `ISSUE_REPO`, `CREATE_ISSUES`, `ISSUE_CREATE_TOKEN`).
-3. Upload `snap-test-report.json` as an artifact (always), and `snap-triage-report.json`
+4. Upload `snap-test-report.json` as an artifact (always), and `snap-triage-report.json`
    if it exists.
 
 The job fails if the test verdict is not `PASS` — `run.sh` exits non-zero, which
@@ -107,7 +109,7 @@ Prerequisites:
 
 Store your secrets in local files (e.g. `openrouter.key`, `issue-create.token`) and pass
 them inline so they are never exported to the session or written to shell history.
-Run from the action root directory (`agentic-test/`):
+Run from this directory (`tests/agentic/`):
 
 ```bash
 # Dry run: test, triage, and print any new/duplicate findings (no writes to GitHub).

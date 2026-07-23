@@ -17,6 +17,7 @@ fi
 
 # Launch workshop. In CI it is already running.
 if [[ "${GITHUB_ACTIONS:-}" != "true" ]]; then
+    echo "Launching workshop instance"
     workshop launch
 fi
 trap 'echo "::group::Remove workshop instance"; workshop remove || true; echo "::endgroup::"' EXIT
