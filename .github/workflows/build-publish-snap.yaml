@@ -114,3 +114,44 @@ jobs:
           echo -e "\nUploading snap..."
           set -x
           snapcraft upload "$snap_file" "${component_args[@]}" --release="$channel"
+
+        # TODO: instead of this, make an action that verifies the release and 
+        # reuse also in the build-precheck. 
+        # TODO: verify that the existing secret allows revision listing.
+      - name: Verify release
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.store-credentials }}
+        run: |
+          channel="${{ inputs.publish-channel }}"
+
+          snap_file="$(ls *.snap)"
+
+          # Snap file name pattern: <snap_name>_<version>_<arch>.snap
+          base="${snap_file%.snap}"
+          snap_name="${base%%_*}"
+          arch="${base##*_}"
+          version="${base#*_}"
+          version="${version%_*}"
+
+          echo "Snap name: $snap_name"
+          echo "Version:   $version"
+          echo "Arch:      $arch"
+          echo "Channel:   $channel"
+
+          # 'snapcraft upload' can report success even when the revision is not
+          # actually released to the requested channel. Verify by inspecting the
+          # revisions list: a released revision shows the channel in the last
+          # column, an unreleased one shows '-'.
+          revisions="$(snapcraft revisions "$snap_name" --arch "$arch")"
+          echo "Revisions for version $version:"
+          echo "$revisions" | { grep -F "$version" || true; }
+
+          # It is fine if the version has multiple revisions (e.g. published on a
+          # second attempt); we only require that at least one of them is
+          # released to a channel (last column is not '-').
+          if echo "$revisions" | awk -v ver="$version" '$4 == ver && $NF != "-" { found = 1 } END { exit !found }'; then
+            echo "Release verified: version $version is released to a channel."
+          else
+            echo "Release verification failed: version $version is not released to any channel."
+            exit 1
+          fi
