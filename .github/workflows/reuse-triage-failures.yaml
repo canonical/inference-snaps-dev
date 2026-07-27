@@ -22,10 +22,10 @@ on:
 jobs:
   triage:
     name: Triage Job Failures
-    if: fromJson(inputs.workflow-run).conclusion == 'failure' && fromJson(inputs.workflow-run).run_attempt <= 5
+    if: fromJson(inputs.workflow-run).conclusion == 'failure' && fromJson(inputs.workflow-run).run_attempt <= 2
     runs-on: ubuntu-slim
     permissions:
-      actions: write # required to re-run jobs
+      actions: write # required to rerun jobs
 
     steps:
       - name: Classify failures and retry if infra-related
@@ -40,78 +40,94 @@ jobs:
           REPO=$(echo "${WORKFLOW_RUN_JSON}" | jq -r '.repository.full_name')
 
           # Build grep -E pattern from newline-separated input
-          INFRA_PATTERN_RE=$(echo "${INFRA_PATTERNS_INPUT}" | grep -v '^[[:space:]]*$' | paste -sd '|')
+          INFRA_PATTERN_RE=$(printf '%s\n' "${INFRA_PATTERNS_INPUT}" | sed '/^[[:space:]]*$/d' | paste -sd '|')
 
-          echo "==> Triggered by workflow run: ${RUN_ID}"
-          echo "==> Fetching failed jobs..."
+          echo "Triggered by workflow run: ${RUN_ID}"
+          echo "Fetching failed jobs..."
 
           FAILED_JOBS=$(gh api \
             "repos/${REPO}/actions/runs/${RUN_ID}/jobs" \
             --jq '[.jobs[] | select(.conclusion == "failure")]')
 
           JOB_COUNT=$(echo "${FAILED_JOBS}" | jq 'length')
-          echo "==> Found ${JOB_COUNT} failed job(s)"
+          echo "Found ${JOB_COUNT} failed job(s)"
 
           if [[ "${JOB_COUNT}" -eq 0 ]]; then
-            echo "==> No failed jobs. Nothing to triage."
+            echo "No failed jobs. Nothing to triage."
             exit 0
           fi
 
-          ALL_INFRA=true
+          HAS_INFRA_ERR=false
+          INFRA_JOB_IDS=()
           SUMMARY=""
 
           while IFS= read -r JOB; do
             JOB_ID=$(echo "${JOB}" | jq -r '.id')
             JOB_NAME=$(echo "${JOB}" | jq -r '.name')
-            echo ""
-            echo "--- Inspecting: ${JOB_NAME} (id=${JOB_ID}) ---"
+            echo -e "\nInspecting: ${JOB_NAME} (id=${JOB_ID})"
 
-            LOGS=$(gh api \
-              "repos/${REPO}/actions/jobs/${JOB_ID}/logs" \
-              || true)
+            LOGS=$(gh api "repos/${REPO}/actions/jobs/${JOB_ID}/logs")
 
-            if echo "${LOGS}" | grep -qE "${INFRA_PATTERN_RE}"; then
-              MATCHED=$(echo "${LOGS}" | grep -oE "${INFRA_PATTERN_RE}" | head -1)
-              echo "==> INFRA failure: '${MATCHED}'"
-              SUMMARY="${SUMMARY}\n- [INFRA]     ${JOB_NAME}: ${MATCHED}"
+            set +o pipefail
+            INFRA_ERR=$(echo "${LOGS}" | grep -oE "${INFRA_PATTERN_RE}" | head -1)
+            set -o pipefail
+
+            if [[ -n "${INFRA_ERR}" ]]; then
+              echo "INFRA failure: '${INFRA_ERR}'"
+              SUMMARY="${SUMMARY}\n- ⚠️ ${JOB_NAME}: ${INFRA_ERR} -> retry"
+              HAS_INFRA_ERR=true
+              INFRA_JOB_IDS+=("${JOB_ID}")
             else
-              echo "==> NON-INFRA failure: will not auto-retry"
-              SUMMARY="${SUMMARY}\n- [NON-INFRA] ${JOB_NAME}: no infra pattern matched"
-              ALL_INFRA=false
+              echo "NON-INFRA failure: will not auto-retry"
+              SUMMARY="${SUMMARY}\n- ❌ ${JOB_NAME}: no infra pattern matched"
             fi
           done < <(echo "${FAILED_JOBS}" | jq -c '.[]')
 
-          echo ""
-          echo "==> Triage summary:"
-          echo -e "${SUMMARY}"
-          echo ""
+          if [[ -n "${SUMMARY}" ]]; then
+            echo "### Summary" >> "${GITHUB_STEP_SUMMARY}"
+            echo "" >> "${GITHUB_STEP_SUMMARY}"
+            echo -e "${SUMMARY}" >> "${GITHUB_STEP_SUMMARY}"
+            echo "" >> "${GITHUB_STEP_SUMMARY}"
+          fi
 
-          if [[ "${ALL_INFRA}" == "true" ]]; then
-            echo "==> All failures are infrastructure-related. Re-running failed jobs..."
-            gh api \
-              --method POST \
-              "repos/${REPO}/actions/runs/${RUN_ID}/rerun-failed-jobs"
-            echo "==> Re-run triggered."
+          if [[ "${HAS_INFRA_ERR}" == "true" ]]; then
+            echo -e "\nInfrastructure failures detected. Re-running failed jobs..."
+            
+
+            # The /rerun endpoint can be used to rerun a single job, but it does not support multiple jobs in one request.
+            # A subsequent run of a single job can only be triggered once the previous run has completed.
+            #
+            # Rerun all failed jobs:
+            if gh api --method POST "repos/${REPO}/actions/runs/${RUN_ID}/rerun-failed-jobs"; then
+              echo -e "\nSuccessfully triggered rerun for failed jobs"
+
+              echo "" >> "${GITHUB_STEP_SUMMARY}"
+              echo "> [!NOTE]" >> "${GITHUB_STEP_SUMMARY}"
+              echo "> On a failure, all failed jobs are rerun, not just infra-related ones." >> "${GITHUB_STEP_SUMMARY}"
+            else
+              echo -e "\nFailed to trigger rerun for jobs" >&2
+              exit 1
+            fi
           else
-            echo "==> Non-infrastructure failures present. Skipping auto-retry."
-            echo "==> Manual investigation required."
+            echo "No infrastructure failures detected. Skipping auto-retry."
             exit 1
           fi
 
       - name: Write job summary
         if: always()
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WORKFLOW_RUN_JSON: "${{ inputs.workflow-run }}"
+          RUN_NUMBER: ${{ fromJson(inputs.workflow-run).run_number }}
+          RUN_URL: ${{ fromJson(inputs.workflow-run).html_url }}
+          WORKFLOW_NAME: "${{ fromJson(inputs.workflow-run).name }}"
+          AUTHOR: ${{ fromJson(inputs.workflow-run).actor.login }}
+          ATTEMPT: ${{ fromJson(inputs.workflow-run).run_attempt }}
+          HEAD_BRANCH: ${{ fromJson(inputs.workflow-run).head_branch }}
+          HEAD_SHA: ${{ fromJson(inputs.workflow-run).head_sha }}
+          REPO: ${{ fromJson(inputs.workflow-run).repository.full_name }}
         run: |
-          RUN_NUMBER=$(echo "${WORKFLOW_RUN_JSON}" | jq -r '.run_number')
-          RUN_URL=$(echo "${WORKFLOW_RUN_JSON}" | jq -r '.html_url')
-          WORKFLOW_NAME=$(echo "${WORKFLOW_RUN_JSON}" | jq -r '.name')
-          AUTHOR=$(echo "${WORKFLOW_RUN_JSON}" | jq -r '.actor.login')
-          ATTEMPT=$(echo "${WORKFLOW_RUN_JSON}" | jq -r '.run_attempt')
-          HEAD_BRANCH=$(echo "${WORKFLOW_RUN_JSON}" | jq -r '.head_branch')
-          HEAD_SHA=$(echo "${WORKFLOW_RUN_JSON}" | jq -r '.head_sha')
-
-          echo "### Triage Details" >> "${GITHUB_STEP_SUMMARY}"
+          echo "### Details" >> "${GITHUB_STEP_SUMMARY}"
           echo "" >> "${GITHUB_STEP_SUMMARY}"
           echo "| Detail | Value |" >> "${GITHUB_STEP_SUMMARY}"
           echo "|--------|-------|" >> "${GITHUB_STEP_SUMMARY}"
@@ -124,9 +140,7 @@ jobs:
           PR_COUNT=$(echo "${WORKFLOW_RUN_JSON}" | jq '.pull_requests | length')
           if [[ "${PR_COUNT}" -gt 0 ]]; then
             PR_NUMBER=$(echo "${WORKFLOW_RUN_JSON}" | jq -r '.pull_requests[0].number')
-            PR_TITLE=$(echo "${WORKFLOW_RUN_JSON}" | jq -r '.pull_requests[0].title')
+            PR_TITLE=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq '.title')
             echo "| PR | [#${PR_NUMBER}: ${PR_TITLE}](../../pull/${PR_NUMBER}) |" >> "${GITHUB_STEP_SUMMARY}"
           fi
 
-          echo "" >> "${GITHUB_STEP_SUMMARY}"
-          echo "See the step logs above for the per-job failure classification." >> "${GITHUB_STEP_SUMMARY}"
