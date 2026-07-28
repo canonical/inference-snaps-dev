@@ -56,6 +56,9 @@ on:
       store-credentials:
         description: Snap Store credentials for publishing the snap to the specified channel
         required: true
+      hf-token:
+        description: Hugging Face token for accessing model files
+        required: true
 
 
 jobs:
@@ -70,7 +73,8 @@ jobs:
       init-build-script: ${{ inputs.build-init-script }}
       publish-channel: ${{ inputs.store-track }}/edge
     secrets:
-      store-credentials: ${{ secrets.store-credentials }} 
+      store-credentials: ${{ secrets.store-credentials }}
+      hf-token: ${{ secrets.hf-token }}
 
   smoke-test:
     needs: [build-edge]
