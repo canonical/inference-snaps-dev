@@ -53,15 +53,15 @@
       "managerFilePatterns": [
         "snap/snapcraft.yaml"
       ],
-      // The llama.cpp builds are tagged with build numbers, e.g. b10154
-      // Capture only the numeric build value and leave the leading "b" literal.
-      // This ensures numeric ordering (10154 > 9611) and valid replacements.
+      // The llama.cpp builds are single auto-incrementing build numbers, e.g. b10154.
+      // Keep "b" literal in the URL and capture only the numeric part.
       "matchStrings": [
         "https://github\\.com/canonical/llama\\.cpp-builds/releases/download/b(?<currentValue>\\d+)/llamacpp"
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "canonical/llama.cpp-builds",
-      "versioningTemplate": "semver-coerced"
+      // Compare only the captured build number
+      "versioningTemplate": "regex:^(?<build>\\d+)$"
     }
   ]
 }
