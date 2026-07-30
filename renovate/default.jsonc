@@ -16,6 +16,13 @@
       "automerge": true,
       "automergeType": "pr",
       "ignoreTests": true
+    },
+    {
+      "description": "Allow large numeric jumps for llama.cpp build numbers",
+      "matchPackageNames": [
+        "canonical/llama.cpp-builds"
+      ],
+      "maxMajorIncrement": 0
     }
   ],
   "customManagers": [
@@ -60,8 +67,8 @@
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "canonical/llama.cpp-builds",
-      // Compare only the captured build number
-      "versioningTemplate": "regex:^(?<build>\\d+)$"
+      // Compare the numeric build as a single-component version.
+      "versioningTemplate": "regex:^(?<major>\\d+)$"
     }
   ]
 }
