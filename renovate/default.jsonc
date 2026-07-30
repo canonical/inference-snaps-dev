@@ -58,7 +58,10 @@
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "canonical/llama.cpp-builds",
-      "versioningTemplate": "regex:^b(?<major>\\d+)$"
+      // Upstream tags are b<build-number>, for example b9611, b10154.
+      "extractVersionTemplate": "^b(?<version>\\d+)$",
+      // Compare only the numeric build number so newer builds sort correctly.
+      "versioningTemplate": "regex:^(?<major>\\d+)$"
     }
   ]
 }
