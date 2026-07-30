@@ -29,7 +29,7 @@ on:
         required: true
         type: string
       infra-patterns:
-        description: Newline-separated list of patterns that indicate an infrastructure failure
+        description: Newline-separated list of extended regular expression (ERE) patterns that match infrastructure failures in logs
         required: false
         type: string
         default: |
@@ -90,7 +90,7 @@ jobs:
             LOGS=$(gh api "repos/${REPO}/actions/jobs/${JOB_ID}/logs")
 
             set +o pipefail
-            INFRA_ERR=$(echo "${LOGS}" | grep -oE "${INFRA_PATTERN_RE}" | head -1)
+            INFRA_ERR=$(echo "${LOGS}" | grep --only-matching --extended-regexp "${INFRA_PATTERN_RE}" | head -1)
             set -o pipefail
 
             if [[ -n "${INFRA_ERR}" ]]; then
