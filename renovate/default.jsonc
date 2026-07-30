@@ -53,12 +53,18 @@
       "managerFilePatterns": [
         "snap/snapcraft.yaml"
       ],
+      // The llama.cpp builds are single auto-incrementing build numbers, e.g. b10154.
+      // Capture the numeric part from the URL:
       "matchStrings": [
-        "https://github\\.com/canonical/llama\\.cpp-builds/releases/download/(?<currentValue>[^/]+)/llamacpp"
+        "https://github\\.com/canonical/llama\\.cpp-builds/releases/download/b(?<currentValue>\\d+)/llamacpp"
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "canonical/llama.cpp-builds",
-      "versioningTemplate": "regex:^b(?<major>\\d+)$"
+      // GitHub release tags are prefixed with "b", e.g. b10154.
+      // Strip that prefix from datasource results before version comparison.
+      "extractVersionTemplate": "^b(?<version>\\d+)$",
+      // Compare the captured numeric build number as the minor semantic version: 0.<minor>.0
+      "versioningTemplate": "regex:^(?<minor>\\d+)$"
     }
   ]
 }
