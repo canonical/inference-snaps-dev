@@ -60,6 +60,9 @@
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "canonical/llama.cpp-builds",
+      // GitHub release tags are prefixed with "b", e.g. b10154.
+      // Strip that prefix from datasource results before version comparison.
+      "extractVersionTemplate": "^b(?<version>\\d+)$",
       // Compare the captured numeric build number as the minor version
       "versioningTemplate": "regex:^(?<minor>\\d+)$"
     }
