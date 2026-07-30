@@ -143,21 +143,25 @@ jobs:
           SUMMARY: ${{ steps.classify.outputs.summary }}
         run: |
           if [[ -n "${SUMMARY}" ]]; then
-            echo "" >> "${GITHUB_STEP_SUMMARY}"
-            echo "### Classification summary" >> "${GITHUB_STEP_SUMMARY}"
-            echo "" >> "${GITHUB_STEP_SUMMARY}"
-            echo -e "${SUMMARY}" >> "${GITHUB_STEP_SUMMARY}"
+            {
+              echo ""
+              echo "### Classification summary"
+              echo ""
+              echo -e "${SUMMARY}"
+            } >> "${GITHUB_STEP_SUMMARY}"
           fi
           
-          echo "### Triage details" >> "${GITHUB_STEP_SUMMARY}"
-          echo "" >> "${GITHUB_STEP_SUMMARY}"
-          echo "| Detail | Value |" >> "${GITHUB_STEP_SUMMARY}"
-          echo "|--------|-------|" >> "${GITHUB_STEP_SUMMARY}"
-          echo "| Workflow | ${WORKFLOW_NAME} |" >> "${GITHUB_STEP_SUMMARY}"
-          echo "| Run Attempt | [${RUN_NUMBER}#${ATTEMPT}](${RUN_URL}?attempt=${ATTEMPT}) |" >> "${GITHUB_STEP_SUMMARY}"
-          echo "| Author | \`${AUTHOR}\` |" >> "${GITHUB_STEP_SUMMARY}"
-          echo "| Branch | \`${HEAD_BRANCH}\` |" >> "${GITHUB_STEP_SUMMARY}"
-          echo "| Commit | [\`${HEAD_SHA:0:7}\`](../../commit/${HEAD_SHA}) |" >> "${GITHUB_STEP_SUMMARY}"
+          {
+            echo "### Triage details"
+            echo ""
+            echo "| Detail | Value |"
+            echo "|--------|-------|"
+            echo "| Workflow | ${WORKFLOW_NAME} |"
+            echo "| Run Attempt | [${RUN_NUMBER}#${ATTEMPT}](${RUN_URL}?attempt=${ATTEMPT}) |"
+            echo "| Author | \`${AUTHOR}\` |"
+            echo "| Branch | \`${HEAD_BRANCH}\` |"
+            echo "| Commit | [\`${HEAD_SHA:0:7}\`](../../commit/${HEAD_SHA}) |"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
           PR_COUNT=$(echo "${WORKFLOW_RUN_JSON}" | jq '.pull_requests | length')
           if [[ "${PR_COUNT}" -gt 0 ]]; then
