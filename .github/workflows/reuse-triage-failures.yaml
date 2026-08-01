@@ -35,6 +35,7 @@ on:
         default: |
           Status: error while processing
           MAAS reports Failed Deployment
+          Issue encountered while processing your request: [500] Internal Server Error.
 
 jobs:
   triage:
