@@ -171,7 +171,7 @@ test_endpoint_models() {
   local start_time
   start_time=$(date +%s)
 
-  local base_url=$("$snap_name" status --format=json | jq -r '.entrypoints.openai.url // .endpoints.openai // empty')
+  local base_url=$("$snap_name" status --format=json | jq -r '.entrypoints.openai.url // empty')
   if [[ -z "$base_url" ]]; then
     exit_error "Could not determine OpenAI base URL from status output."
   fi
@@ -211,7 +211,7 @@ test_endpoint_chat_completion() {
   local connection_timeout=60
   local attempt=1
 
-  local base_url=$("$snap_name" status --format=json | jq -r '.entrypoints.openai.url // .endpoints.openai // empty')
+  local base_url=$("$snap_name" status --format=json | jq -r '.entrypoints.openai.url // empty')
   if [[ -z "$base_url" ]]; then
     exit_error "Could not determine OpenAI base URL from status output."
   fi

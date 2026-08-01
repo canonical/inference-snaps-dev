@@ -121,7 +121,7 @@ echo "::endgroup::"
 echo "::group::Running benchmark"
 _run "git clone --depth 1 --branch v1.0.5 https://github.com/Yoosu-L/llmapibenchmark.git"
 status_json=$(_run $SNAP_NAME status --format=json)
-api_url=$(echo "$status_json" | jq -r '.entrypoints.openai.url // .endpoints.openai // empty')
+api_url=$(echo "$status_json" | jq -r '.entrypoints.openai.url // empty')
 if [[ -z "$api_url" ]]; then
   echo "::error::Could not determine OpenAI URL from status output"
   exit 1
