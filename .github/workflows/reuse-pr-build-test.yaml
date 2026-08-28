@@ -116,7 +116,6 @@ jobs:
         runner: ${{ fromJSON(inputs.build-runner) }}
     with:
       runner: "${{ toJSON(matrix.runner) }}"
-      init-build-script: download-models.sh
       publish-channel: ${{ inputs.store-track }}/edge/pr-${{ inputs.pr-number }} # E.g. latest/edge/pr-123
     secrets:
       store-credentials: ${{ secrets.store-credentials }}
