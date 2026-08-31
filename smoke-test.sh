@@ -80,7 +80,7 @@ log_debugging_info() {
   snap logs -n all "$snap_name"
   
   log_section "Machine info"
-  "$snap_name" show-machine
+  "$snap_name" machine
 }
 
 exit_error() {
@@ -345,7 +345,7 @@ test_engine_listing() {
 
   log_info "Comparing available vs declared engines..."
 
-  mapfile -t avail_engines < <("$snap_name" list-engines --format=json | jq -r '.engines[].name' | sort)
+  mapfile -t avail_engines < <("$snap_name" engines --format=json | jq -r '.engines[].name' | sort)
   echo -e "Available engines:\n${avail_engines[*]}"
 
   mapfile -t src_engines < <(find "/snap/$snap_name/current/engines/" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
@@ -365,7 +365,7 @@ test_engine_listing() {
   log_info "Querying individual engines..."
   for engine in "${src_engines[@]}"; do
     log_info "Querying engine: $engine"
-    "$snap_name" show-engine "$engine" >/dev/null
+    "$snap_name" engine "$engine" >/dev/null
   done
 }
 
@@ -384,7 +384,7 @@ test_engine_switching() {
   "$snap_name" status
 
   log_info "Showing current engine..."
-  "$snap_name" show-engine
+  "$snap_name" engine
 
   log_info "Testing engine switch..."
   if ! "$snap_name" use-engine "$target_engine" --assume-yes; then
