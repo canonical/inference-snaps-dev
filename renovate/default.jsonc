@@ -49,6 +49,19 @@
     },
     {
       "customType": "regex",
+      "description": "Update openvino-model-server",
+      "managerFilePatterns": [
+        "snap/snapcraft.yaml"
+      ],
+      "matchStrings": [
+        "https://github\\.com/openvinotoolkit/model_server/releases/download/(?<currentValue>v[^/]+)/ovms"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "openvinotoolkit/model_server",
+      "versioningTemplate": "loose"
+    },
+    {
+      "customType": "regex",
       "description": "Update llama.cpp builds",
       "managerFilePatterns": [
         "snap/snapcraft.yaml"
