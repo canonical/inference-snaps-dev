@@ -73,6 +73,19 @@
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "canonical/llama.cpp-builds",
       "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Update intel-compute-runtime-bundle",
+      "managerFilePatterns": [
+        "snap/snapcraft.yaml"
+      ],
+      "matchStrings": [
+        "https://github\\.com/jpm-canonical/intel-compute-runtime-bundle/releases/download/(?<currentValue>[^/]+)/intel-compute-runtime-amd64\\.tar\\.gz"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "jpm-canonical/intel-compute-runtime-bundle",
+      "versioningTemplate": "loose"
     }
   ]
 }
