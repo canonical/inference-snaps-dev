@@ -76,19 +76,21 @@ log_section() {
 }
 
 log_debugging_info() {
+  local snap_name="$1"
+
   log_section "Snap logs"
-  snap logs -n all "$snap_name"
-  
+  snap logs -n all "$snap_name" || log_warning "Could not retrieve snap logs."
+
   log_section "Machine info"
-  "$snap_name" machine
+  "$snap_name" machine || log_warning "Could not retrieve machine info."
 }
 
 exit_error() {
   log_error "$1"
 
-  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+  if [[ -n "${GITHUB_ACTIONS:-}" && -n "${SNAP_NAME:-}" ]]; then
     echo "::group:: Debugging Information"
-    log_debugging_info
+    log_debugging_info "$SNAP_NAME"
     echo "::endgroup::"
   fi
 
