@@ -76,19 +76,21 @@ log_section() {
 }
 
 log_debugging_info() {
+  local snap_name="$1"
+
   log_section "Snap logs"
-  snap logs -n all "$snap_name"
-  
+  snap logs -n all "$snap_name" || log_warning "Could not retrieve snap logs."
+
   log_section "Machine info"
-  "$snap_name" show-machine
+  "$snap_name" machine || log_warning "Could not retrieve machine info."
 }
 
 exit_error() {
   log_error "$1"
 
-  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+  if [[ -n "${GITHUB_ACTIONS:-}" && -n "${SNAP_NAME:-}" ]]; then
     echo "::group:: Debugging Information"
-    log_debugging_info
+    log_debugging_info "$SNAP_NAME"
     echo "::endgroup::"
   fi
 
@@ -345,7 +347,7 @@ test_engine_listing() {
 
   log_info "Comparing available vs declared engines..."
 
-  mapfile -t avail_engines < <("$snap_name" list-engines --format=json | jq -r '.engines[].name' | sort)
+  mapfile -t avail_engines < <("$snap_name" engines --format=json | jq -r '.engines[].name' | sort)
   echo -e "Available engines:\n${avail_engines[*]}"
 
   mapfile -t src_engines < <(find "/snap/$snap_name/current/engines/" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
@@ -365,7 +367,7 @@ test_engine_listing() {
   log_info "Querying individual engines..."
   for engine in "${src_engines[@]}"; do
     log_info "Querying engine: $engine"
-    "$snap_name" show-engine "$engine" >/dev/null
+    "$snap_name" engine "$engine" >/dev/null
   done
 }
 
@@ -384,7 +386,7 @@ test_engine_switching() {
   "$snap_name" status
 
   log_info "Showing current engine..."
-  "$snap_name" show-engine
+  "$snap_name" engine
 
   log_info "Testing engine switch..."
   if ! "$snap_name" use-engine "$target_engine" --assume-yes; then

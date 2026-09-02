@@ -200,11 +200,11 @@ as a real user would.
 3. Capture machine information through a PTY and save it for the report:
 
    ```
-   script -qec '"$SNAP_NAME" show-machine' /dev/null
+   script -qec '"$SNAP_NAME" machine' /dev/null
    ```
 
    **Save the full output** — you will need it verbatim for the test report's
-   `environment.show_machine_output` field. If `show-machine` does not exist or errors,
+   `environment.show_machine_output` field. If `machine` does not exist or errors,
    record the error output instead so it is still available for issue reports.
 
 4. Discover the available commands before using them, running the CLI through a PTY so
@@ -255,7 +255,7 @@ valid JSON.
     "snap_version": "1.2.3",
     "snap_revision": "48",
     "snap_list_output": "<full output of: snap list $SNAP_NAME>",
-    "show_machine_output": "<full output of: script -qec '$SNAP_NAME show-machine' /dev/null>",
+    "show_machine_output": "<full output of: script -qec '$SNAP_NAME machine' /dev/null>",
     "devmode": false,
     "arch": "x86_64",
     "os": "Ubuntu 24.04.4 LTS",
