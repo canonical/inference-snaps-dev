@@ -55,6 +55,16 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Features that can be validated during smoke tests
+# To add:
+# - openai_chat_image_recognition
+# - openai_chat_ocr
+# - openai_embeddings
+SUPPORTED_FEATURES=(
+  openai_models
+  openai_chat_text
+)
+
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
@@ -98,15 +108,15 @@ exit_error() {
 }
 
 usage() {
-  echo "Usage: $0 <inference-snap-name> <engine> [capabilities]"
+  echo "Usage: $0 <inference-snap-name> <engine> [--features=x,y,z]"
   echo "Runs smoke tests for a specific engine against an inference snap."
   echo
-  echo "capabilities: Comma separated list of capabilities to validate."
-  echo "              Supported values: text. Optional; when omitted, no"
-  echo "              capability tests are run."
+  echo "--features: Comma separated list of features to validate."
+  echo "            Supported values: chat_completions_text. Optional; when"
+  echo "            omitted, no feature tests are run."
   echo
   echo "Example:"
-  echo "./$(basename "$0") gemma4 cpu text"
+  echo "./$(basename "$0") gemma4 cpu --features=chat_completions_text"
 }
 
 # =============================================================================
@@ -132,10 +142,32 @@ check_for_jq() {
 }
 
 validate_arguments() {
-  if [ $# -lt 2 ]; then
+  if [[ -z "$SNAP_NAME" || -z "$ENGINE" ]]; then
     usage
     exit_error "Engine and snap name are required."
   fi
+}
+
+validate_features() {
+  local features="$1"
+  local -a feature_list
+  IFS=', ' read -r -a feature_list <<<"$features"
+
+  for feature in "${feature_list[@]}"; do
+    [[ -z "$feature" ]] && continue
+    local supported
+    local found=false
+    for supported in "${SUPPORTED_FEATURES[@]}"; do
+      if [[ "$feature" == "$supported" ]]; then
+        found=true
+        break
+      fi
+    done
+    if [[ "$found" != true ]]; then
+      usage
+      exit_error "Unknown feature: '$feature'. Supported values: ${SUPPORTED_FEATURES[*]}."
+    fi
+  done
 }
 
 check_port_listening() {
@@ -170,7 +202,7 @@ check_port_listening() {
 # HTTP API TESTING FUNCTIONS
 # =============================================================================
 
-test_endpoint_models() {
+test_openai_models() {
   local timeout_seconds=300  # 5 minutes
   local retry_delay=10
   local connection_timeout=60
@@ -211,7 +243,7 @@ test_endpoint_models() {
   done
 }
 
-test_text_capability() {
+test_openai_chat_text() {
   local max_retries=5
   local retry_delay=60
   local connection_timeout=60
@@ -290,32 +322,33 @@ EOF
 
 }
 
-run_api_tests() {
-  log_section "API Endpoint Tests"
-run_capability_tests() {
-  local capabilities="$1"
+test_features() {
+  local features="$1"
 
-  log_section "Capability Tests"
-
-  test_endpoint_models
+  log_section "Feature Tests"
 
   # Split comma-separated list into an array.
-  local -a caps
-  IFS=',' read -r -a caps <<<"$capabilities"
+  local -a feature_list
+  IFS=', ' read -r -a feature_list <<<"$features"
 
-  for cap in "${caps[@]}"; do
-    case "$cap" in
-    text)
-      test_text_capability
+  if [[ ${#feature_list[@]} -eq 0 ]]; then
+    log_warning "No features specified for testing."
+    return 0
+  fi
+
+  for feature in "${feature_list[@]}"; do
+    case "$feature" in
+    openai_models)
+      test_openai_models
       ;;
-    # vision)
-    #   test_vision_capability
-    #   ;;
+    openai_chat_text)
+      test_openai_chat_text
+      ;;
     "")
       # Ignore empty entries from consecutive separators.
       ;;
     *)
-      exit_error "Unknown capability: '$cap'. Supported values: text, vision, embeddings."
+      exit_error "Unknown feature: '$feature'. Supported values: ${SUPPORTED_FEATURES[*]}."
       ;;
     esac
   done
@@ -456,12 +489,12 @@ test_automatic_engine_selection() {
 main() {
   local snap_name="$1"
   local target_engine="$2"
-  local capabilities="${3:-}"
+  local features="${3:-}"
 
   log_section "Starting Smoke Tests"
   log_info "Running tests against snap: $snap_name"
   log_info "Selected engine: $target_engine"
-  log_info "Capabilities: ${capabilities:-<none>}"
+  log_info "Features: ${features:-<none>}"
 
   # Pre-flight checks
   local server_port
@@ -474,7 +507,7 @@ main() {
   test_engine_listing "$snap_name"
   test_automatic_engine_selection "$snap_name"
   test_engine_switching "$snap_name" "$target_engine"
-  run_capability_tests "$capabilities"
+  test_features "$features"
 
   log_section "All Smoke Tests Completed Successfully!"
 }
@@ -487,12 +520,33 @@ main() {
 check_root_privileges
 check_for_curl
 check_for_jq
-validate_arguments "$@"
 
-# Extract arguments
-SNAP_NAME="$1"
-ENGINE="$2"
-CAPABILITIES="${3:-}"
+# Parse arguments
+SNAP_NAME=""
+ENGINE=""
+FEATURES=""
+positional_args=()
+
+for arg in "$@"; do
+  case "$arg" in
+  --features=*)
+    FEATURES="${arg#*=}"
+    ;;
+  -*)
+    usage
+    exit_error "Unknown option: $arg"
+    ;;
+  *)
+    positional_args+=("$arg")
+    ;;
+  esac
+done
+
+SNAP_NAME="${positional_args[0]:-}"
+ENGINE="${positional_args[1]:-}"
+
+validate_arguments
+validate_features "$FEATURES"
 
 # Run main function
-main "$SNAP_NAME" "$ENGINE" "$CAPABILITIES"
+main "$SNAP_NAME" "$ENGINE" "$FEATURES"

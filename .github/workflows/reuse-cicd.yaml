@@ -47,8 +47,8 @@ on:
         required: true
         type: string
 
-      smoke-test-capabilities:
-        description: Capabilities to validate during smoke testing
+      smoke-test-features:
+        description: Comma separated list of features to validate during smoke testing
         required: false
         type: string
       
@@ -100,7 +100,7 @@ jobs:
         with:
           snap-name: ${{ inputs.snap-name }}
           engine: ${{ inputs.smoke-test-engine }}
-          capabilities: ${{ inputs.smoke-test-capabilities }}
+          features: ${{ inputs.smoke-test-features }}
   
   promote-beta:
     needs: [smoke-test]

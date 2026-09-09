@@ -7,8 +7,8 @@ inputs:
   engine:
     description: Engine to validate during smoke tests
     required: true
-  capabilities:
-    description: Comma separated list of capabilities to validate during smoke tests
+  features:
+    description: Comma separated list of features to validate during smoke tests
     required: false
 
 runs:
@@ -22,4 +22,4 @@ runs:
         action_repo_root="$(realpath "$GITHUB_ACTION_PATH/../../..")"
 
         sudo --preserve-env=GITHUB_ACTIONS \
-          "$action_repo_root/smoke-test.sh" "${{ inputs.snap-name }}" "${{ inputs.engine }}" "${{ inputs.capabilities }}"
+          "$action_repo_root/smoke-test.sh" "${{ inputs.snap-name }}" "${{ inputs.engine }}" --features="${{ inputs.features }}"
