@@ -108,15 +108,16 @@ exit_error() {
 }
 
 usage() {
+  local supported_features="${SUPPORTED_FEATURES[*]}"
   echo "Usage: $0 <inference-snap-name> <engine> [--features=x,y,z]"
   echo "Runs smoke tests for a specific engine against an inference snap."
   echo
   echo "--features: Comma separated list of features to validate."
-  echo "            Supported values: chat_completions_text. Optional; when"
-  echo "            omitted, no feature tests are run."
+  echo "            Optional; when omitted, no feature tests are run."
+  echo "            Supported values: ${supported_features// /, }"
   echo
   echo "Example:"
-  echo "./$(basename "$0") gemma4 cpu --features=chat_completions_text"
+  echo "./$(basename "$0") gemma4 cpu"
 }
 
 # =============================================================================
