@@ -46,6 +46,11 @@ on:
         description: Engine to validate during smoke tests
         required: true
         type: string
+
+      smoke-test-capabilities:
+        description: Capabilities to validate during smoke testing
+        required: false
+        type: string
       
       store-track:
         description: Snap Store track to publish to
@@ -95,6 +100,7 @@ jobs:
         with:
           snap-name: ${{ inputs.snap-name }}
           engine: ${{ inputs.smoke-test-engine }}
+          capabilities: ${{ inputs.smoke-test-capabilities }}
   
   promote-beta:
     needs: [smoke-test]

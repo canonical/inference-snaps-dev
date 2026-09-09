@@ -98,11 +98,15 @@ exit_error() {
 }
 
 usage() {
-  echo "Usage: $0 <inference-snap-name> <engine>"
+  echo "Usage: $0 <inference-snap-name> <engine> [capabilities]"
   echo "Runs smoke tests for a specific engine against an inference snap."
   echo
+  echo "capabilities: Comma separated list of capabilities to validate."
+  echo "              Supported values: text. Optional; when omitted, no"
+  echo "              capability tests are run."
+  echo
   echo "Example:"
-  echo "./$(basename "$0") gemma4 cpu"
+  echo "./$(basename "$0") gemma4 cpu text"
 }
 
 # =============================================================================
@@ -207,7 +211,7 @@ test_endpoint_models() {
   done
 }
 
-test_endpoint_chat_completion() {
+test_text_capability() {
   local max_retries=5
   local retry_delay=60
   local connection_timeout=60
@@ -288,9 +292,33 @@ EOF
 
 run_api_tests() {
   log_section "API Endpoint Tests"
+run_capability_tests() {
+  local capabilities="$1"
+
+  log_section "Capability Tests"
 
   test_endpoint_models
-  test_endpoint_chat_completion
+
+  # Split comma-separated list into an array.
+  local -a caps
+  IFS=',' read -r -a caps <<<"$capabilities"
+
+  for cap in "${caps[@]}"; do
+    case "$cap" in
+    text)
+      test_text_capability
+      ;;
+    # vision)
+    #   test_vision_capability
+    #   ;;
+    "")
+      # Ignore empty entries from consecutive separators.
+      ;;
+    *)
+      exit_error "Unknown capability: '$cap'. Supported values: text, vision, embeddings."
+      ;;
+    esac
+  done
 }
 
 # =============================================================================
@@ -428,10 +456,12 @@ test_automatic_engine_selection() {
 main() {
   local snap_name="$1"
   local target_engine="$2"
+  local capabilities="${3:-}"
 
   log_section "Starting Smoke Tests"
   log_info "Running tests against snap: $snap_name"
   log_info "Selected engine: $target_engine"
+  log_info "Capabilities: ${capabilities:-<none>}"
 
   # Pre-flight checks
   local server_port
@@ -444,7 +474,7 @@ main() {
   test_engine_listing "$snap_name"
   test_automatic_engine_selection "$snap_name"
   test_engine_switching "$snap_name" "$target_engine"
-  run_api_tests
+  run_capability_tests "$capabilities"
 
   log_section "All Smoke Tests Completed Successfully!"
 }
@@ -462,6 +492,7 @@ validate_arguments "$@"
 # Extract arguments
 SNAP_NAME="$1"
 ENGINE="$2"
+CAPABILITIES="${3:-}"
 
 # Run main function
-main "$SNAP_NAME" "$ENGINE"
+main "$SNAP_NAME" "$ENGINE" "$CAPABILITIES"
