@@ -84,8 +84,17 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      # actions/checkout so the local action below can be resolved, since this
+      # reusable workflow may be called from a different repository
+      - name: Checkout inference-snaps-dev
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: inference-snaps-dev
+
       - name: Remove label
-        uses: ./.github/actions/remove-label
+        uses: ./inference-snaps-dev/.github/actions/remove-label
         with:
           label: ${{ inputs.trigger-label }}
 
