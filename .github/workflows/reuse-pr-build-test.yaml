@@ -73,6 +73,9 @@ on:
       testflinger-secret-key:
         description: Testflinger secret key for test job
         required: true
+      logs-secret:
+        description: Secret used to mask sensitive logs in test jobs
+        required: false
 
 jobs:
   remove-trigger-labels:
@@ -127,7 +130,7 @@ jobs:
       fail-fast: false
       matrix:
         jobs: ${{ fromJSON(inputs.test-jobs-matrix) }}
-    uses: canonical/inference-snaps-testing/.github/workflows/test-snap.yaml@v1
+    uses: canonical/inference-snaps-testing/.github/workflows/test-snap.yaml@secrets-management
     with:
       job-queue: ${{ matrix.jobs.job-queue }}
       provision-data: ${{ matrix.jobs.provision-data }}
@@ -145,3 +148,4 @@ jobs:
       testflinger-client-id: ${{ inputs.testflinger-client-id }}
     secrets:
       testflinger-secret-key: ${{ secrets.testflinger-secret-key }}
+      logs-secret: ${{ secrets.logs-secret }}
