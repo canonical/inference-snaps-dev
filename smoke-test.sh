@@ -58,8 +58,11 @@ NC='\033[0m' # No Color
 # Features that can be validated during smoke tests
 # To add:
 # - openai_chat_image_recognition
-# - openai_chat_ocr
-# - openai_embeddings
+# - openai_chat_image_ocr
+# - openai_text_embeddings
+# - openai_transcription
+# - openai_realtime_transcription
+# - openai_realtime_transcription_logprops
 SUPPORTED_FEATURES=(
   openai_models
   openai_chat_text
