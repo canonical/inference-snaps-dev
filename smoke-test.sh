@@ -324,7 +324,8 @@ EOF
 }
 
 test_features() {
-  local features="$1"
+  local snap_name="$1"
+  local features="$2"
 
   log_section "Feature Tests"
 
@@ -508,7 +509,7 @@ main() {
   test_engine_listing "$snap_name"
   test_automatic_engine_selection "$snap_name"
   test_engine_switching "$snap_name" "$target_engine"
-  test_features "$features"
+  test_features "$snap_name" "$features"
 
   log_section "All Smoke Tests Completed Successfully!"
 }
