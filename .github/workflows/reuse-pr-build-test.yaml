@@ -76,14 +76,18 @@ on:
 
 jobs:
   remove-trigger-labels:
+    name: Remove trigger label
     # Run only for trigger labels, not any other label
     if: ${{ inputs.trigger-label == 'trigger-build' || inputs.trigger-label == 'trigger-tests' }}
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-    uses: ./.github/workflows/remove-label.yaml
-    with:
-      label: ${{ inputs.trigger-label }}
+    steps:
+      - name: Remove label
+        uses: ./.github/actions/remove-label
+        with:
+          label: ${{ inputs.trigger-label }}
 
   build-pre-check:
     name: Check for existing build

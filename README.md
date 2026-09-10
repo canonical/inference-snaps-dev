@@ -5,8 +5,12 @@ This project contains developer tools for building, uploading, and testing Infer
 ## Reusable Workflows
 A few Reusable Workflows are available in the `.github/workflows` folder:
 
-- [publish-build-snap](./.github/workflows/build-publish-snap.yaml) - to build and publish a snap with its components
-- [remove-label](./.github/workflows/remove-label.yaml) - to remove a label from a PR after the associated workflow has run
+- [build-publish-snap](./.github/workflows/build-publish-snap.yaml) - to build and publish a snap with its components
+
+## Actions
+A few Actions are available in the `.github/actions` folder:
+
+- [remove-label](./.github/actions/remove-label/action.yaml) - to remove a label from a PR after the associated workflow has run
 
 ## Scripts
 This project contains a few scripts to help build, install, and upload the snaps.
