@@ -89,13 +89,11 @@ log_section() {
 }
 
 log_debugging_info() {
-  local snap_name="$1"
-
   log_section "Snap logs"
-  snap logs -n all "$snap_name" || log_warning "Could not retrieve snap logs."
+  snap logs -n all "$SNAP_NAME" || log_warning "Could not retrieve snap logs."
 
   log_section "Machine info"
-  "$snap_name" machine || log_warning "Could not retrieve machine info."
+  "$SNAP_NAME" machine || log_warning "Could not retrieve machine info."
 }
 
 exit_error() {
@@ -103,7 +101,7 @@ exit_error() {
 
   if [[ -n "${GITHUB_ACTIONS:-}" && -n "${SNAP_NAME:-}" ]]; then
     echo "::group:: Debugging Information"
-    log_debugging_info "$SNAP_NAME"
+    log_debugging_info
     echo "::endgroup::"
   fi
 
@@ -213,7 +211,7 @@ test_openai_models() {
   local start_time
   start_time=$(date +%s)
 
-  local base_url=$("$snap_name" status --format=json | jq -r '.entrypoints.openai.url // empty')
+  local base_url=$("$SNAP_NAME" status --format=json | jq -r '.entrypoints.openai.url // empty')
   if [[ -z "$base_url" ]]; then
     exit_error "Could not determine OpenAI base URL from status output."
   fi
@@ -253,11 +251,11 @@ test_openai_chat_text() {
   local connection_timeout=60
   local attempt=1
 
-  local base_url=$("$snap_name" status --format=json | jq -r '.entrypoints.openai.url // empty')
+  local base_url=$("$SNAP_NAME" status --format=json | jq -r '.entrypoints.openai.url // empty')
   if [[ -z "$base_url" ]]; then
     exit_error "Could not determine OpenAI base URL from status output."
   fi
-  local model_name=$("$snap_name" status --format=json | jq -r '.model.name')
+  local model_name=$("$SNAP_NAME" status --format=json | jq -r '.model.name')
   local endpoint="$base_url/chat/completions"
 
   log_info "Testing OpenAI chat completions endpoints."
@@ -327,8 +325,7 @@ EOF
 }
 
 test_features() {
-  local snap_name="$1"
-  local features="$2"
+  local features="$1"
 
   log_section "Feature Tests"
 
@@ -364,42 +361,39 @@ test_features() {
 # =============================================================================
 
 test_snap_installation() {
-  local snap_name="$1"
-
   log_section "Snap Installation Test"
   log_info "Checking snap installation..."
-  snap list "$snap_name"
+  snap list "$SNAP_NAME"
 }
 
 test_configuration_management() {
-  local snap_name="$1"
   local default_port
 
   log_section "Configuration Tests"
 
-  log_info "Print internal configs (snap get $snap_name)..."
-  snap get "$snap_name" -d
+  log_info "Print internal configs (snap get $SNAP_NAME)..."
+  snap get "$SNAP_NAME" -d
 
-  log_info "Print configs ($snap_name get)..."
-  "$snap_name" get
+  log_info "Print configs ($SNAP_NAME get)..."
+  "$SNAP_NAME" get
 
   log_info "Getting specific config..."
-  default_port=$("$snap_name" get http.port)
+  default_port=$("$SNAP_NAME" get http.port)
   echo "$default_port"
 
   log_info "Testing config change..."
-  "$snap_name" set http.port=9999 --assume-yes
+  "$SNAP_NAME" set http.port=9999 --assume-yes
 
   # Verify config change persisted
   local port
-  port=$("$snap_name" get http.port)
+  port=$("$SNAP_NAME" get http.port)
   if (("$port" != 9999)); then
     exit_error "Config change did not persist."
   fi
   log_info "✓ Config change persisted successfully"
 
   log_info "Reverting config change..."
-  "$snap_name" set http.port="$default_port" --assume-yes
+  "$SNAP_NAME" set http.port="$default_port" --assume-yes
 }
 
 # =============================================================================
@@ -407,16 +401,14 @@ test_configuration_management() {
 # =============================================================================
 
 test_engine_listing() {
-  local snap_name="$1"
-
   log_section "Engine Listing Tests"
 
   log_info "Comparing available vs declared engines..."
 
-  mapfile -t avail_engines < <("$snap_name" engines --format=json | jq -r '.engines[].name' | sort)
+  mapfile -t avail_engines < <("$SNAP_NAME" engines --format=json | jq -r '.engines[].name' | sort)
   echo -e "Available engines:\n${avail_engines[*]}"
 
-  mapfile -t src_engines < <(find "/snap/$snap_name/current/engines/" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
+  mapfile -t src_engines < <(find "/snap/$SNAP_NAME/current/engines/" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)
   echo -e "Declared engines:\n${src_engines[*]}"
 
   if [[ ${#avail_engines[@]} -ne ${#src_engines[@]} ]]; then
@@ -433,35 +425,33 @@ test_engine_listing() {
   log_info "Querying individual engines..."
   for engine in "${src_engines[@]}"; do
     log_info "Querying engine: $engine"
-    "$snap_name" engine "$engine" >/dev/null
+    "$SNAP_NAME" engine "$engine" >/dev/null
   done
 }
 
 get_curr_engine() {
-  local snap_name="$1"
-  "$snap_name" status --format=json | jq -r '.engine'
+  "$SNAP_NAME" status --format=json | jq -r '.engine'
 }
 
 test_engine_switching() {
-  local snap_name="$1"
-  local target_engine="$2"
+  local target_engine="$1"
 
   log_section "Engine Switching Tests"
 
   log_info "Checking status..."
-  "$snap_name" status
+  "$SNAP_NAME" status
 
   log_info "Showing current engine..."
-  "$snap_name" engine
+  "$SNAP_NAME" engine
 
   log_info "Testing engine switch..."
-  if ! "$snap_name" use-engine "$target_engine" --assume-yes; then
+  if ! "$SNAP_NAME" use-engine "$target_engine" --assume-yes; then
     exit_error "Failed to switch to engine: $target_engine"
   fi
 
   log_info "Verifying engine switch via status command..."
   local curr_engine
-  curr_engine=$(get_curr_engine "$snap_name")
+  curr_engine=$(get_curr_engine)
   if [[ "$curr_engine" != "$target_engine" ]]; then
     exit_error "Current engine from status command ($curr_engine) does not match expected engine ($target_engine)."
   fi
@@ -469,18 +459,17 @@ test_engine_switching() {
 }
 
 test_automatic_engine_selection() {
-  local snap_name="$1"
   log_section "Automatic Engine Selection Test"
 
-  log_info "Running: $snap_name use-engine --auto"
-  engine=$("$snap_name" use-engine --auto --assume-yes | grep -oP 'Selected engine: \K\S+')
+  log_info "Running: $SNAP_NAME use-engine --auto"
+  engine=$("$SNAP_NAME" use-engine --auto --assume-yes | grep -oP 'Selected engine: \K\S+')
 
   log_info "Selected engine: $engine"
 
-  snap stop "$snap_name"
-  snap start "$snap_name"
+  snap stop "$SNAP_NAME"
+  snap start "$SNAP_NAME"
 
-  check=$(get_curr_engine "$snap_name")
+  check=$(get_curr_engine)
 
   if [[ "$check" != "$engine" ]]; then
     exit_error "Automatic engine selection failed: status shows $check but expected $engine"
@@ -492,27 +481,26 @@ test_automatic_engine_selection() {
 # =============================================================================
 
 main() {
-  local snap_name="$1"
-  local target_engine="$2"
-  local features="${3:-}"
+  local target_engine="$1"
+  local features="${2:-}"
 
   log_section "Starting Smoke Tests"
-  log_info "Running tests against snap: $snap_name"
+  log_info "Running tests against snap: $SNAP_NAME"
   log_info "Selected engine: $target_engine"
   log_info "Features: ${features:-<none>}"
 
   # Pre-flight checks
   local server_port
-  server_port=$("$snap_name" get http.port)
+  server_port=$("$SNAP_NAME" get http.port)
   check_port_listening "$server_port"
 
   # Run all test suites
-  test_snap_installation "$snap_name"
-  test_configuration_management "$snap_name"
-  test_engine_listing "$snap_name"
-  test_automatic_engine_selection "$snap_name"
-  test_engine_switching "$snap_name" "$target_engine"
-  test_features "$snap_name" "$features"
+  test_snap_installation
+  test_configuration_management
+  test_engine_listing
+  test_automatic_engine_selection
+  test_engine_switching "$target_engine"
+  test_features "$features"
 
   log_section "All Smoke Tests Completed Successfully!"
 }
@@ -554,4 +542,4 @@ validate_arguments
 validate_features "$FEATURES"
 
 # Run main function
-main "$SNAP_NAME" "$ENGINE" "$FEATURES"
+main "$ENGINE" "$FEATURES"
