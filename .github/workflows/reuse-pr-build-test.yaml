@@ -78,9 +78,7 @@ jobs:
   remove-trigger-labels:
     name: Remove trigger label
     # Run only for trigger labels, not any other label
-    if: |
-      (inputs.trigger-label == 'trigger-build' || inputs.trigger-label == 'trigger-tests') &&
-      github.event.label.name == inputs.trigger-label
+    if: ${{ inputs.trigger-label == 'trigger-build' || inputs.trigger-label == 'trigger-tests' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
