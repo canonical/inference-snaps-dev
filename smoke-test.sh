@@ -466,9 +466,6 @@ test_automatic_engine_selection() {
 
   log_info "Selected engine: $engine"
 
-  snap stop "$SNAP_NAME"
-  snap start "$SNAP_NAME"
-
   check=$(get_curr_engine)
 
   if [[ "$check" != "$engine" ]]; then
