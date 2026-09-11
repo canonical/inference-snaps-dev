@@ -10,7 +10,6 @@ runs:
   using: composite
   steps:
     - name: Remove label
-      if: github.event.label.name == inputs.label
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}

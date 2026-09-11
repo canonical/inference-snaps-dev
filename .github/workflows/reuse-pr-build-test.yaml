@@ -78,23 +78,16 @@ jobs:
   remove-trigger-labels:
     name: Remove trigger label
     # Run only for trigger labels, not any other label
-    if: ${{ inputs.trigger-label == 'trigger-build' || inputs.trigger-label == 'trigger-tests' }}
+    if: |
+      (inputs.trigger-label == 'trigger-build' || inputs.trigger-label == 'trigger-tests') &&
+      github.event.label.name == inputs.trigger-label
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
     steps:
-      # actions/checkout so the local action below can be resolved, since this
-      # reusable workflow may be called from a different repository
-      - name: Checkout inference-snaps-dev
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ job.workflow_repository }}
-          ref: ${{ job.workflow_sha }}
-          path: inference-snaps-dev
-
       - name: Remove label
-        uses: ./inference-snaps-dev/.github/actions/remove-label
+        uses: canonical/inference-snaps-dev/.github/actions/remove-label@v2
         with:
           label: ${{ inputs.trigger-label }}
 
