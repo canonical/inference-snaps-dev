@@ -449,6 +449,9 @@ test_engine_switching() {
     exit_error "Failed to switch to engine: $target_engine"
   fi
 
+  # Sleep for a while to allow completion of service restart before moving on to other tests
+  sleep 3
+
   log_info "Verifying engine switch via status command..."
   local curr_engine
   curr_engine=$(get_curr_engine)
@@ -463,6 +466,9 @@ test_automatic_engine_selection() {
 
   log_info "Running: $SNAP_NAME use-engine --auto"
   engine=$("$SNAP_NAME" use-engine --auto --assume-yes | grep -oP 'Selected engine: \K\S+')
+
+  # Sleep for a while to allow completion of service restart before moving on to other tests
+  sleep 3
 
   log_info "Selected engine: $engine"
 
