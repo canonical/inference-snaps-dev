@@ -14,6 +14,7 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
+        # No checkout happens here, so GH_REPO must be set explicitly for gh to target the right repo
         GH_REPO: ${{ github.repository }}
       run: |
         PR_NUMBER=${{ github.event.pull_request.number }}
