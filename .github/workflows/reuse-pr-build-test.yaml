@@ -85,7 +85,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Remove label
-        uses: canonical/inference-snaps-dev/.github/actions/remove-label@IENG-2428-convert-remove-label-into-action
+        uses: canonical/inference-snaps-dev/.github/actions/remove-label@v2
         with:
           label: ${{ inputs.trigger-label }}
 
