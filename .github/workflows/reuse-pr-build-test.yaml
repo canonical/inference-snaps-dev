@@ -122,7 +122,7 @@ jobs:
     # Run only for trigger-tests label, not any other label
     # Run even if previous job was skipped (!cancelled)
     # Run only if build hasn't failed
-    if: ${{ inputs.trigger-label == 'trigger-tests' && !cancelled() && needs.build-and-publish.result != 'failed' }}
+    if: ${{ inputs.trigger-label == 'trigger-tests' && !cancelled() && needs.build-and-publish.result != 'failure' }}
     strategy:
       fail-fast: false
       matrix:
