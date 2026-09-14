@@ -91,12 +91,14 @@ jobs:
 
           # Build components argument list
           component_args=()
+          max_comp_size=$((5 * 1024 * 1024 * 1024)) # 5G
           echo "Snap components:"
           for comp_file in *.comp; do
               # When no .comp files exist, bash leaves the glob pattern unexpanded (*.comp). Check if $comp_file exists.
               [ -f "$comp_file" ] || continue
 
               comp_size=$(du -h "$comp_file" | cut -f1)
+              comp_size_bytes=$(stat -c%s "$comp_file")
 
               # Component file name patterns:
               # <snap_name>+<comp_name>_<comp_version>.comp
@@ -107,6 +109,11 @@ jobs:
                   cut -d'_' -f1) # split by _, take 1st part
 
               echo -e "\t$comp_file $comp_size"
+
+              if [ "$comp_size_bytes" -gt "$max_comp_size" ]; then
+                  echo "::error::Component '$comp_name' ($comp_file) is $comp_size, which exceeds the 5G limit. Aborting upload."
+                  exit 1
+              fi
 
               component_args+=(--component "$comp_name=$comp_file")
           done
