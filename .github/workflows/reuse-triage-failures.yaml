@@ -85,7 +85,10 @@ jobs:
           # Inspect each failed job
           for JOB in "${JOBS[@]}"; do
             JOB_ID=$(echo "${JOB}" | jq -r '.id')
-            JOB_NAME=$(echo "${JOB}" | jq -r '.name')
+
+            # Matrix job names can contain embedded newlines.
+            # Collapse to spaces so they don't break the GITHUB_OUTPUT file format.
+            JOB_NAME=$(echo "${JOB}" | jq -r '.name' | tr '\n' ' ' | tr -s ' ')
             echo -e "\nInspecting: ${JOB_NAME} (id=${JOB_ID})"
 
             LOGS=$(gh api "repos/${REPO}/actions/jobs/${JOB_ID}/logs")
