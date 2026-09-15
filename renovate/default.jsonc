@@ -78,6 +78,19 @@
       "extractVersionTemplate": "^b(?<version>\\d+)$",
       // Compare the captured numeric build number as the minor semantic version: 0.<minor>.0
       "versioningTemplate": "regex:^(?<minor>\\d+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Update intel-compute-runtime-bundle",
+      "managerFilePatterns": [
+        "snap/snapcraft.yaml"
+      ],
+      "matchStrings": [
+        "https://github\\.com/jpm-canonical/intel-compute-runtime-bundle/releases/download/(?<currentValue>[^/]+)/intel-compute-runtime-amd64\\.tar\\.gz"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "jpm-canonical/intel-compute-runtime-bundle",
+      "versioningTemplate": "loose"
     }
   ]
 }
