@@ -299,8 +299,8 @@ EOF
         --write-out '\n' \
         2>/dev/null
     )
-    set +x
     local curl_exit_code=$?
+    set +x
     set -e
 
     if [[ $curl_exit_code -eq 0 ]]; then
