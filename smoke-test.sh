@@ -332,12 +332,11 @@ test_systemone_decision() {
   local connection_timeout=60
   local attempt=1
 
-  local base_url
-  base_url=$("$SNAP_NAME" status --format=json | jq -r '.entrypoints.openai.url // empty')
-  if [[ -z "$base_url" ]]; then
-    exit_error "Could not determine OpenAI base URL from status output."
+  local url
+  url=$("$SNAP_NAME" status --format=json | jq -r '.entrypoints.systemone.url // empty')
+  if [[ -z "$url" ]]; then
+    exit_error "Could not determine SystemOne URL from status output."
   fi
-  local endpoint="$base_url/systemone"
 
   log_info "Testing SystemOne decision endpoint."
 
@@ -372,12 +371,12 @@ EOF
   local api_response
 
   while [[ $attempt -le $max_retries ]]; do
-    log_info "Checking $endpoint ($attempt/$max_retries)"
+    log_info "Checking $url ($attempt/$max_retries)"
 
     set +e
     set -x # log the curl command for debugging
     api_response=$(
-      curl -X POST "$endpoint" \
+      curl -X POST "$url" \
         -H "Content-Type: application/json" \
         -d "$request_body" \
         --connect-timeout $connection_timeout \
@@ -396,7 +395,7 @@ EOF
         exit_error "Empty response from server"
       fi
 
-      log_info "✓ $endpoint: Pass"
+      log_info "✓ $url: Pass"
       return 0
     fi
 
@@ -408,7 +407,7 @@ EOF
     ((attempt++))
   done
 
-  exit_error "✗ $endpoint: Failed after $max_retries attempts"
+  exit_error "✗ $url: Failed after $max_retries attempts"
 }
 
 test_features() {
