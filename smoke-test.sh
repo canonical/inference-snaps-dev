@@ -332,11 +332,15 @@ test_systemone_decision() {
   local connection_timeout=60
   local attempt=1
 
+  local model_status
+  model_status=$("$SNAP_NAME" status --format=json)
   local url
-  url=$("$SNAP_NAME" status --format=json | jq -r '.entrypoints.systemone.url // empty')
+  local model_name
+  url=$(echo "$model_status" | jq -r '.entrypoints.systemone.url // empty')
   if [[ -z "$url" ]]; then
     exit_error "Could not determine SystemOne URL from status output."
   fi
+  model_name=$(echo "$model_status" | jq -r '.model.name')
 
   log_info "Testing SystemOne decision endpoint."
 
@@ -344,6 +348,7 @@ test_systemone_decision() {
   request_body=$(
     cat <<EOF
 {
+  "model": "$model_name",
   "state": "Customer message: I was charged twice for my monthly subscription this morning. I've already contacted support twice, and I'm furious. The renewal is due in 30 minutes, so I need this fixed immediately.",
   "questions": {
     "route": {
