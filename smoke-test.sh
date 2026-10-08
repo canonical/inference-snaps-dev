@@ -63,9 +63,11 @@ NC='\033[0m' # No Color
 # - openai_transcription
 # - openai_realtime_transcription
 # - openai_realtime_transcription_logprops
+# - systemone_image_decision
 SUPPORTED_FEATURES=(
   openai_models
   openai_chat_text
+  systemone_decision
 )
 
 # =============================================================================
@@ -324,6 +326,91 @@ EOF
 
 }
 
+test_systemone_decision() {
+  local max_retries=5
+  local retry_delay=60
+  local connection_timeout=60
+  local attempt=1
+
+  local base_url
+  base_url=$("$SNAP_NAME" status --format=json | jq -r '.entrypoints.openai.url // empty')
+  if [[ -z "$base_url" ]]; then
+    exit_error "Could not determine OpenAI base URL from status output."
+  fi
+  local endpoint="$base_url/systemone"
+
+  log_info "Testing SystemOne decision endpoint."
+
+  local request_body
+  request_body=$(
+    cat <<EOF
+{
+  "state": "Customer message: I was charged twice for my monthly subscription this morning. I've already contacted support twice, and I'm furious. The renewal is due in 30 minutes, so I need this fixed immediately.",
+  "questions": {
+    "route": {
+      "type": "choice",
+      "instructions": "Which team should handle this?",
+      "criteria": {
+        "billing": "payments, charges, refunds, invoices",
+        "shipping": "delivery, tracking, lost or late parcels",
+        "technical": "bugs, errors, login problems"
+      }
+    },
+    "angry": {
+      "type": "noul",
+      "instructions": "Is the customer angry?"
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this?",
+      "criteria": ["can wait", "this week", "today", "right now"]
+    }
+  }
+}
+EOF
+)
+  local api_response
+
+  while [[ $attempt -le $max_retries ]]; do
+    log_info "Checking $endpoint ($attempt/$max_retries)"
+
+    set +e
+    set -x # log the curl command for debugging
+    api_response=$(
+      curl -X POST "$endpoint" \
+        -H "Content-Type: application/json" \
+        -d "$request_body" \
+        --connect-timeout $connection_timeout \
+        --max-time 600 \
+        --retry 0 \
+        --fail-with-body \
+        --write-out '\n' \
+        2>/dev/null
+    )
+    local curl_exit_code=$?
+    set +x
+    set -e
+
+    if [[ $curl_exit_code -eq 0 ]]; then
+      if [[ -z "$api_response" ]]; then
+        exit_error "Empty response from server"
+      fi
+
+      log_info "✓ $endpoint: Pass"
+      return 0
+    fi
+
+    if [[ $attempt -lt $max_retries ]]; then
+      log_warning "Decision endpoint failed; retrying in ${retry_delay}s"
+      sleep "$retry_delay"
+    fi
+
+    ((attempt++))
+  done
+
+  exit_error "✗ $endpoint: Failed after $max_retries attempts"
+}
+
 test_features() {
   local features="$1"
 
@@ -345,6 +432,9 @@ test_features() {
       ;;
     openai_chat_text)
       test_openai_chat_text
+      ;;
+    systemone_decision)
+      test_systemone_decision
       ;;
     "")
       # Ignore empty entries from consecutive separators.
