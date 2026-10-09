@@ -288,7 +288,7 @@ EOF
   while [[ $attempt -le $max_retries ]]; do
     log_info "Checking $endpoint ($attempt/$max_retries)"
 
-    set +e
+    local curl_exit_code=0
     set -x # log the curl command for debugging
     api_response=$(
       curl -X POST "$endpoint" \
@@ -300,10 +300,8 @@ EOF
         --fail-with-body \
         --write-out '\n' \
         2>/dev/null
-    )
-    local curl_exit_code=$?
+    ) || curl_exit_code=$? # '||' avoids triggering the ERR trap on expected failures
     set +x
-    set -e
 
     if [[ $curl_exit_code -eq 0 ]]; then
       if [[ -z "$api_response" ]]; then
@@ -405,7 +403,7 @@ EOF
   while [[ $attempt -le $max_retries ]]; do
     log_info "Checking $url ($attempt/$max_retries)"
 
-    set +e
+    local curl_exit_code=0
     set -x # log the curl command for debugging
     api_response=$(
       curl -X POST "$url" \
@@ -417,10 +415,8 @@ EOF
         --fail-with-body \
         --write-out '\n' \
         2>/dev/null
-    )
-    local curl_exit_code=$?
+    ) || curl_exit_code=$? # '||' avoids triggering the ERR trap on expected failures
     set +x
-    set -e
 
     if [[ $curl_exit_code -eq 0 ]]; then
       if [[ -z "$api_response" ]]; then
