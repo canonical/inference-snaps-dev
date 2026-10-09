@@ -326,6 +326,42 @@ EOF
 
 }
 
+validate_systemone_response() {
+  local response="$1"
+
+  # check if it is a valid json object
+  if ! jq -e 'type == "object"' <<<"$response" >/dev/null 2>&1; then
+    log_error "Response is not a valid JSON object"
+    return 1
+  fi
+
+  # check if response contains answers
+  if ! jq -e '.answers | type == "object"' <<<"$response" >/dev/null 2>&1; then
+    log_error "Response is missing required fields: answers"
+    return 1
+  fi
+
+  # check if it contains an answer about the "route" question
+  if ! jq -e '.answers.route' <<<"$response" >/dev/null 2>&1; then
+    log_error "Decision about \"route\" is missing from the decision response; required field is missing: answers.route"
+    return 1
+  fi
+
+  # check if the "route" question is of the correct type
+  if ! jq -e '.answers.route.type == "choice"' <<<"$response" >/dev/null 2>&1; then
+    log_error "Expected answers.route.type to be \"choice\""
+    return 1
+  fi
+
+  # check if the "route" question was answered correctly
+  if ! jq -e '.answers.route.choice == "billing"' <<<"$response" >/dev/null 2>&1; then
+    log_error "Model provided the wrong answer: answers.route.choice must be \"billing\""
+    return 1
+  fi
+
+  # Validation passed
+}
+
 test_systemone_decision() {
   local max_retries=5
   local retry_delay=60
@@ -389,6 +425,11 @@ EOF
     if [[ $curl_exit_code -eq 0 ]]; then
       if [[ -z "$api_response" ]]; then
         exit_error "Empty response from server"
+      fi
+
+      if ! validate_systemone_response "$api_response"; then
+        log_error "Response: $api_response"
+        exit_error "Invalid SystemOne response."
       fi
 
       log_info "✓ $url: Pass"
