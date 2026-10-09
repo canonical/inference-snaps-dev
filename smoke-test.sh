@@ -349,7 +349,7 @@ test_systemone_decision() {
     cat <<EOF
 {
   "model": "$model_name",
-  "state": "Customer message: I was charged twice for my monthly subscription this morning. I've already contacted support twice, and I'm furious. The renewal is due in 30 minutes, so I need this fixed immediately.",
+  "state": "Customer message: I was charged twice for my monthly subscription this morning. I need this fixed immediately.",
   "questions": {
     "route": {
       "type": "choice",
@@ -359,15 +359,6 @@ test_systemone_decision() {
         "shipping": "delivery, tracking, lost or late parcels",
         "technical": "bugs, errors, login problems"
       }
-    },
-    "angry": {
-      "type": "noul",
-      "instructions": "Is the customer angry?"
-    },
-    "urgency": {
-      "type": "score",
-      "instructions": "How urgent is this?",
-      "criteria": ["can wait", "this week", "today", "right now"]
     }
   }
 }
