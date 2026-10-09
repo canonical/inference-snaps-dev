@@ -63,9 +63,11 @@ NC='\033[0m' # No Color
 # - openai_transcription
 # - openai_realtime_transcription
 # - openai_realtime_transcription_logprops
+# - systemone_image_decision
 SUPPORTED_FEATURES=(
   openai_models
   openai_chat_text
+  systemone_decision
 )
 
 # =============================================================================
@@ -286,7 +288,7 @@ EOF
   while [[ $attempt -le $max_retries ]]; do
     log_info "Checking $endpoint ($attempt/$max_retries)"
 
-    set +e
+    local curl_exit_code=0
     set -x # log the curl command for debugging
     api_response=$(
       curl -X POST "$endpoint" \
@@ -298,10 +300,8 @@ EOF
         --fail-with-body \
         --write-out '\n' \
         2>/dev/null
-    )
-    local curl_exit_code=$?
+    ) || curl_exit_code=$? # '||' avoids triggering the ERR trap on expected failures
     set +x
-    set -e
 
     if [[ $curl_exit_code -eq 0 ]]; then
       if [[ -z "$api_response" ]]; then
@@ -322,6 +322,125 @@ EOF
 
   exit_error "✗ $endpoint: Failed after $max_retries attempts"
 
+}
+
+validate_systemone_route_choice_response() {
+  local response="$1"
+
+  # check if it is a valid json object
+  if ! jq -e 'type == "object"' <<<"$response" >/dev/null 2>&1; then
+    log_error "Response is not a valid JSON object"
+    return 1
+  fi
+
+  # check if response contains answers
+  if ! jq -e '.answers | type == "object"' <<<"$response" >/dev/null 2>&1; then
+    log_error "Response is missing required fields: answers"
+    return 1
+  fi
+
+  # check if it contains an answer about the "route" question
+  if ! jq -e '.answers.route' <<<"$response" >/dev/null 2>&1; then
+    log_error "Decision about \"route\" is missing from the decision response; required field is missing: answers.route"
+    return 1
+  fi
+
+  # check if the "route" question is of the correct type
+  if ! jq -e '.answers.route.type == "choice"' <<<"$response" >/dev/null 2>&1; then
+    log_error "Expected answers.route.type to be \"choice\""
+    return 1
+  fi
+
+  # check if the "route" question was answered correctly
+  if ! jq -e '.answers.route.choice == "billing"' <<<"$response" >/dev/null 2>&1; then
+    log_error "Model provided the wrong answer: answers.route.choice must be \"billing\""
+    return 1
+  fi
+
+  # Validation passed
+}
+
+test_systemone_decision() {
+  local max_retries=5
+  local retry_delay=60
+  local connection_timeout=60
+  local attempt=1
+
+  local model_status
+  model_status=$("$SNAP_NAME" status --format=json)
+  local url
+  local model_name
+  url=$(echo "$model_status" | jq -r '.entrypoints.systemone.url // empty')
+  if [[ -z "$url" ]]; then
+    exit_error "Could not determine SystemOne URL from status output."
+  fi
+  model_name=$(echo "$model_status" | jq -r '.model.name')
+
+  log_info "Testing SystemOne decision endpoint."
+
+  local request_body
+  request_body=$(
+    cat <<EOF
+{
+  "model": "$model_name",
+  "state": "Customer message: I was charged twice for my monthly subscription this morning. I need this fixed immediately.",
+  "questions": {
+    "route": {
+      "type": "choice",
+      "instructions": "Which team should handle this?",
+      "criteria": {
+        "billing": "payments, charges, refunds, invoices",
+        "shipping": "delivery, tracking, lost or late parcels",
+        "technical": "bugs, errors, login problems"
+      }
+    }
+  }
+}
+EOF
+)
+  local api_response
+
+  while [[ $attempt -le $max_retries ]]; do
+    log_info "Checking $url ($attempt/$max_retries)"
+
+    local curl_exit_code=0
+    set -x # log the curl command for debugging
+    api_response=$(
+      curl -X POST "$url" \
+        -H "Content-Type: application/json" \
+        -d "$request_body" \
+        --connect-timeout $connection_timeout \
+        --max-time 600 \
+        --retry 0 \
+        --fail-with-body \
+        --write-out '\n' \
+        2>/dev/null
+    ) || curl_exit_code=$? # '||' avoids triggering the ERR trap on expected failures
+    set +x
+
+    if [[ $curl_exit_code -eq 0 ]]; then
+      if [[ -z "$api_response" ]]; then
+        exit_error "Empty response from server"
+      fi
+
+      if ! validate_systemone_route_choice_response "$api_response"; then
+        log_error "Response: $api_response"
+        exit_error "Invalid SystemOne response."
+      fi
+
+      log_info "✓ $url: Pass"
+      return 0
+    fi
+
+    if [[ $attempt -lt $max_retries ]]; then
+      log_warning "Decision endpoint failed; retrying in ${retry_delay}s"
+      sleep "$retry_delay"
+    fi
+
+    ((attempt++))
+  done
+
+  exit_error "✗ $url: Failed after $max_retries attempts"
 }
 
 test_features() {
@@ -345,6 +464,9 @@ test_features() {
       ;;
     openai_chat_text)
       test_openai_chat_text
+      ;;
+    systemone_decision)
+      test_systemone_decision
       ;;
     "")
       # Ignore empty entries from consecutive separators.
