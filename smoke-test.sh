@@ -326,7 +326,7 @@ EOF
 
 }
 
-validate_systemone_response() {
+validate_systemone_route_choice_response() {
   local response="$1"
 
   # check if it is a valid json object
@@ -427,7 +427,7 @@ EOF
         exit_error "Empty response from server"
       fi
 
-      if ! validate_systemone_response "$api_response"; then
+      if ! validate_systemone_route_choice_response "$api_response"; then
         log_error "Response: $api_response"
         exit_error "Invalid SystemOne response."
       fi
