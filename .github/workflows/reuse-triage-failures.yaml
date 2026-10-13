@@ -91,10 +91,15 @@ jobs:
             JOB_NAME=$(echo "${JOB}" | jq -r '.name' | tr '\n' ' ' | tr -s ' ')
             echo -e "\nInspecting: ${JOB_NAME} (id=${JOB_ID})"
 
-            LOGS=$(gh api "repos/${REPO}/actions/jobs/${JOB_ID}/logs")
+            # Job logs contain ANSI/terminal escape sequences; gh refuses to emit
+            # them unless explicitly allowed. We strip the escape sequences (and
+            # carriage returns) so that color codes embedded within a line can't
+            # prevent the infra patterns from matching.
+            LOGS=$(gh api --allow-escape-sequences "repos/${REPO}/actions/jobs/${JOB_ID}/logs" \
+              | LC_ALL=C sed -E 's#\x1b\[[0-9;?]*[ -/]*[@-~]##g; s#\r##g')
 
             set +o pipefail
-            INFRA_ERR=$(echo "${LOGS}" | grep --only-matching --extended-regexp "${INFRA_PATTERN_RE}" | head -1)
+            INFRA_ERR=$(echo "${LOGS}" | grep --text --only-matching --extended-regexp "${INFRA_PATTERN_RE}" | head -1)
             set -o pipefail
 
             if [[ -n "${INFRA_ERR}" ]]; then
