@@ -95,6 +95,7 @@ jobs:
             # them unless explicitly allowed. We strip the escape sequences (and
             # carriage returns) so that color codes embedded within a line can't
             # prevent the infra patterns from matching.
+            echo "Querying logs..."
             LOGS=$(gh api --allow-escape-sequences "repos/${REPO}/actions/jobs/${JOB_ID}/logs" \
               | LC_ALL=C sed -E 's#\x1b\[[0-9;?]*[ -/]*[@-~]##g; s#\r##g')
 
