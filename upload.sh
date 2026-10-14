@@ -21,6 +21,7 @@ echo -e "Snap file:\n\t$snap_file $snap_size_human"
 # Build components argument list
 component_args=()
 component_list=()
+max_comp_size=$((5 * 1024 * 1024 * 1024)) # 5G
 echo "Snap components:"
 for comp_file in *.comp; do
 
@@ -44,8 +45,12 @@ for comp_file in *.comp; do
     fi
 
     echo -e "\t$comp_file $comp_size_human $empty_comp_warning"
-    
-    
+
+    if [[ $comp_size -gt $max_comp_size ]]; then
+        echo "Error: component '$comp_name' ($comp_file) is $comp_size_human, which exceeds the 5G limit. Aborting upload."
+        exit 1
+    fi
+
     # Check for duplicate components
     for existing_comp in "${component_list[@]}"; do
         if [[ "$existing_comp" == "$comp_name" ]]; then

@@ -121,7 +121,11 @@ echo "::endgroup::"
 echo "::group::Running benchmark"
 _run "git clone --depth 1 --branch v1.0.5 https://github.com/Yoosu-L/llmapibenchmark.git"
 status_json=$(_run $SNAP_NAME status --format=json)
-api_url=$(echo "$status_json" | jq -r '.endpoints.openai')
+api_url=$(echo "$status_json" | jq -r '.entrypoints.openai.url // empty')
+if [[ -z "$api_url" ]]; then
+  echo "::error::Could not determine OpenAI URL from status output"
+  exit 1
+fi
 echo "API URL: $api_url"
 benchmark_result=$(_run "cd llmapibenchmark/cmd && DEBUG=true go run . --base-url=$api_url --concurrency=1 --format=json")
 echo "$benchmark_result"
