@@ -584,7 +584,7 @@ test_automatic_engine_selection() {
   log_section "Automatic Engine Selection Test"
 
   log_info "Running: $SNAP_NAME use-engine --auto"
-  engine=$("$SNAP_NAME" use-engine --auto --assume-yes | grep -oP 'Selected engine: \K\S+')
+  engine=$("$SNAP_NAME" use-engine --auto --assume-yes | grep 'best match' | grep -oP '^✔\s+\K\S+?(?=:)')
 
   log_info "Selected engine: $engine"
 
