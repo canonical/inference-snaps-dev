@@ -63,6 +63,11 @@ on:
         description: Testflinger client ID for test job
         required: true
         type: string
+      timeout-minutes:
+        description: Timeout for building and publishing (combined), in minutes.
+        required: false
+        type: number
+        default: 360
     secrets:
       store-credentials:
         description: Snap Store credentials for publishing PR builds
@@ -118,6 +123,7 @@ jobs:
     with:
       runner: "${{ toJSON(matrix.runner) }}"
       publish-channel: ${{ inputs.store-track }}/edge/pr-${{ inputs.pr-number }} # E.g. latest/edge/pr-123
+      timeout-minutes: ${{ inputs.timeout-minutes }}
     secrets:
       store-credentials: ${{ secrets.store-credentials }}
 
