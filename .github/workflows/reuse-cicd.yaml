@@ -22,7 +22,7 @@ on:
         description: Timeout for building and publishing (combined), in minutes.
         required: false
         type: number
-        default: 600
+        default: 360
 
       build-init-script: # Deprecated
         description: |

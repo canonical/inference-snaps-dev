@@ -22,7 +22,7 @@ on:
         description: Timeout for building and publishing (combined), in minutes.
         required: false
         type: number
-        default: 600
+        default: 360
       init-build-script: # Deprecated
         description: |
           Script to run before building the snap. 
