@@ -18,6 +18,12 @@ on:
         type: string
         default: '["ubuntu-24.04", "ubuntu-24.04-arm"]'
 
+      timeout-minutes:
+        description: Timeout for building and publishing (combined), in minutes.
+        required: false
+        type: number
+        default: 360
+
       build-init-script: # Deprecated
         description: |
           Script to run before building the snap
@@ -74,6 +80,7 @@ jobs:
       runner: "${{ toJSON(matrix.runner) }}"
       init-build-script: ${{ inputs.build-init-script }}
       publish-channel: ${{ inputs.store-track }}/edge
+      timeout-minutes: ${{ inputs.timeout-minutes }}
     secrets:
       store-credentials: ${{ secrets.store-credentials }} 
 

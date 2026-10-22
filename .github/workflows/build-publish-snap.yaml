@@ -18,6 +18,11 @@ on:
         description: Snap Store channel for publishing the snap
         required: true
         type: string
+      timeout-minutes:
+        description: Timeout for building and publishing (combined), in minutes.
+        required: false
+        type: number
+        default: 360
       init-build-script: # Deprecated
         description: |
           Script to run before building the snap. 
@@ -34,6 +39,7 @@ jobs:
   build:
     name: Build & publish (${{ inputs.runner }})
     runs-on: ${{ fromJSON(inputs.runner) }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
 
     steps:
       - name: Refresh/Install snapd
