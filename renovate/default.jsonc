@@ -38,7 +38,7 @@
       "customType": "regex",
       "description": "Update inference-snaps-webui",
       "managerFilePatterns": [
-        "snap/snapcraft.yaml"
+        "**/snap/snapcraft.yaml"
       ],
       "matchStrings": [
         "https://github\\.com/canonical/inference-snaps-webui/releases/download/(?<currentValue>v[^/]+)/inference-snaps-webui"
