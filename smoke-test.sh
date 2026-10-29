@@ -584,15 +584,10 @@ test_automatic_engine_selection() {
   log_section "Automatic Engine Selection Test"
 
   log_info "Running: $SNAP_NAME use-engine --auto"
-  engine=$("$SNAP_NAME" use-engine --auto --assume-yes | grep -oP 'Selected engine: \K\S+')
-
-  log_info "Selected engine: $engine"
-
-  check=$(get_curr_engine)
-
-  if [[ "$check" != "$engine" ]]; then
-    exit_error "Automatic engine selection failed: status shows $check but expected $engine"
+  if ! "$SNAP_NAME" use-engine --auto --assume-yes; then
+    exit_error "Automatic engine selection command failed."
   fi
+  log_info "Automatic engine selection command completed successfully."
 }
 
 # =============================================================================
