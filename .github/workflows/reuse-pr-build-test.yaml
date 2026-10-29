@@ -78,6 +78,9 @@ on:
       testflinger-secret-key:
         description: Testflinger secret key for test job
         required: true
+      hf-token:
+        description: Hugging Face token for accessing model files
+        required: true
 
 jobs:
   remove-trigger-labels:
@@ -126,6 +129,7 @@ jobs:
       timeout-minutes: ${{ inputs.timeout-minutes }}
     secrets:
       store-credentials: ${{ secrets.store-credentials }}
+      hf-token: ${{ secrets.hf-token }}
 
   test:
     needs: [build-and-publish]
