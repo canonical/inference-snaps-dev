@@ -66,13 +66,12 @@
       "managerFilePatterns": [
         "snap/snapcraft.yaml"
       ],
-      // Capture the release tag from the URL segment between /download/ and /llamacpp.
       "matchStrings": [
         "https://github\\.com/canonical/llama\\.cpp-builds/releases/download/(?<currentValue>[^/]+)/llamacpp"
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "canonical/llama.cpp-builds",
-      "versioningTemplate": "semver-coerced"
+      "versioningTemplate": "semver"
     }
   ]
 }
