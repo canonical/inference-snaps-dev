@@ -40,6 +40,7 @@ on:
           cannot download component ".*": download too slow: [0-9.]+ bytes/sec
           Issue encountered while processing your request: [400] Bad Request.
           Maximum retries exceeded trying to reach the store.
+          Connection aborted.*RemoteDisconnected.*Remote end closed connection without response
 
 jobs:
   triage:
