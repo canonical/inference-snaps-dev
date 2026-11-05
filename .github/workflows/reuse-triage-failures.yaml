@@ -35,10 +35,10 @@ on:
         default: |
           Status: error while processing
           MAAS reports Failed Deployment
-          Issue encountered while processing your request: \[400\] Bad Request.
-          Issue encountered while processing your request: \[500\] Internal Server Error.
+          Issue encountered while processing your request: \[400\] Bad Request
+          Issue encountered while processing your request: \[500\] Internal Server Error
           cannot download component ".*": download too slow: [0-9.]+ bytes/sec
-          Maximum retries exceeded trying to reach the store.
+          Maximum retries exceeded trying to reach the store
           Connection aborted.*RemoteDisconnected.*Remote end closed connection without response
 
 jobs:
