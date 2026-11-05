@@ -38,6 +38,7 @@ on:
           Issue encountered while processing your request: [500] Internal Server Error.
           Remote end closed connection without response
           cannot download component ".*": download too slow: [0-9.]+ bytes/sec
+          Issue encountered while processing your request: [400] Bad Request.
 
 jobs:
   triage:
