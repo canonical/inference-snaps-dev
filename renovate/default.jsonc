@@ -54,10 +54,11 @@
         "snap/snapcraft.yaml"
       ],
       "matchStrings": [
-        "https://github\\.com/openvinotoolkit/model_server/releases/download/(?<currentValue>v[^/]+)/ovms"
+        "https://github\\.com/openvinotoolkit/model_server/releases/download/v(?<currentValue>[^/]+)/ovms_[^_]+_[^_]+_"
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "openvinotoolkit/model_server",
+      "extractVersionTemplate": "^v(?<version>.+)$",
       "versioningTemplate": "loose"
     },
     {
