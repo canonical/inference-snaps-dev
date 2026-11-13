@@ -73,6 +73,19 @@
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "canonical/llama.cpp-builds",
       "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Update intel-compute-runtime-bundle",
+      "managerFilePatterns": [
+        "snap/snapcraft.yaml"
+      ],
+      "matchStrings": [
+        "source: https://github\\.com/canonical/intel-compute-runtime-bundle\\.git[ \\t]*\\r?\\n[ \\t]+source-tag: (?<currentValue>[^\\s#]+)"
+      ],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "canonical/intel-compute-runtime-bundle",
+      "versioningTemplate": "loose"
     }
   ]
 }
