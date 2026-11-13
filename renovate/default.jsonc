@@ -81,10 +81,10 @@
         "snap/snapcraft.yaml"
       ],
       "matchStrings": [
-        "https://github\\.com/jpm-canonical/intel-compute-runtime-bundle/releases/download/(?<currentValue>[^/]+)/intel-compute-runtime-amd64\\.tar\\.gz"
+        "source: https://github\\.com/canonical/intel-compute-runtime-bundle\\.git[ \\t]*\\r?\\n[ \\t]+source-tag: (?<currentValue>[^\\s#]+)"
       ],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "jpm-canonical/intel-compute-runtime-bundle",
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "canonical/intel-compute-runtime-bundle",
       "versioningTemplate": "loose"
     }
   ]
