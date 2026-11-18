@@ -10,8 +10,6 @@ on:
           The input should be a JSON string or array. For example:
           - '"ubuntu-latest"' for a single label
           - '[ "self-hosted", "amd64", "large" ]' for multiple labels
-
-          Note: GH-hosted runners are supported for this workflow.
         type: string
         default: '"ubuntu-latest"'
       publish-channel:
