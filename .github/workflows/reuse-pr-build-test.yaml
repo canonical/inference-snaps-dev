@@ -85,6 +85,7 @@ jobs:
     # Run only for trigger labels, not any other label
     if: ${{ inputs.trigger-label == 'trigger-build' || inputs.trigger-label == 'trigger-tests' }}
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       contents: read
       pull-requests: write
