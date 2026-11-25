@@ -1,0 +1,37 @@
+job_queue: $JOB_QUEUE
+
+test_data:
+  # Copy test scripts to the Testflinger Agent
+  attachments:
+    - local: "../agent-scripts"
+      agent: "agent-scripts"
+
+  # Run commands on the Testflinger Agent
+  test_cmds: |
+    #!/bin/bash -eu
+
+    # The outer testflinger action uses groups for logging. Close its existing one, so we can use our own.
+    echo "::endgroup::"
+    
+    echo "::group::Setting configuration variables"
+      # These vars are replaced by envsubst in the caller.
+      export SNAP_NAME=$SNAP_NAME
+      export SNAP_CHANNEL=$SNAP_CHANNEL
+      export DEVMODE=$DEVMODE
+      export INSTALL_NVIDIA_DRIVER_VERSION=$INSTALL_NVIDIA_DRIVER_VERSION
+      export INSTALL_INTEL_NPU_DRIVER=$INSTALL_INTEL_NPU_DRIVER
+      export SNAP_CONNECTIONS=$SNAP_CONNECTIONS
+    
+      export EXPECTED_ENGINE=$EXPECTED_ENGINE
+      export SELECT_ENGINE=$SELECT_ENGINE
+    
+      export TEST_CHAT_TPS=$TEST_CHAT_TPS
+      export EXPECTED_TPS=$EXPECTED_TPS
+    
+      export TEST_IMAGE_PROMPT=$TEST_IMAGE_PROMPT
+    
+    echo "::endgroup::"
+
+    ./attachments/test/agent-scripts/main.sh
+    
+    echo "::group::Testflinger cleanup"

@@ -1,1 +1,5 @@
 *.temp.yaml
+# Created at runtime by agent-scripts/prompt-vlm.sh
+dut-script.sh
+# Created at runtime by agent-scripts/setup-agent.sh
+install_tools.sh
