@@ -41,7 +41,7 @@ if [ -n "$PROVISION_DATA" ] && ! command -v yq >/dev/null; then
   exit 1
 fi
 
-# Substitute only the job's own variables, as the workflow's "Add configuration to job" step does
+# Substitute only the job's own variables
 envsubst '$JOB_QUEUE $SNAP_NAME $SNAP_CHANNEL $DEVMODE $INSTALL_NVIDIA_DRIVER_VERSION
   $INSTALL_INTEL_NPU_DRIVER $SNAP_CONNECTIONS $EXPECTED_ENGINE $SELECT_ENGINE
   $TEST_CHAT_TPS $EXPECTED_TPS $TEST_IMAGE_PROMPT' \
@@ -56,6 +56,5 @@ fi
 
 cat "$TEMP_JOB_FILE"
 
-# The job attaches ../agent-scripts, relative to the job file
 cd "$JOB_DIR"
 testflinger submit --poll "$TEMP_JOB_FILE"

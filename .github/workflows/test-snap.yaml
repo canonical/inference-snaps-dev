@@ -131,9 +131,6 @@ jobs:
       - name: Checkout reusable workflow repo
         uses: actions/checkout@v7
         with:
-          # Check out the repo and commit this workflow file was loaded from, so the test scripts
-          # always match the workflow revision the caller pinned (e.g. @v2 or a development branch).
-          # The github context can't be used here: when called from a snap repo it describes the caller.
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}
           path: ${{ env.REUSABLE_WORKFLOW_REPO }}
