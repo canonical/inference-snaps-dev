@@ -1,0 +1,40 @@
+name: Update OVMS source pin
+description: Resolve a compatible GitHub release asset and update the OVMS source and checksum locally
+
+inputs:
+  python-variant:
+    description: Required OVMS Python variant (on or off)
+    required: true
+  release-through:
+    description: Optional inclusive release-tag ceiling for historical tests
+    default: ""
+  verify-download:
+    description: Download and hash the candidate before writing the pin
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve OVMS release asset
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        PYTHON_VARIANT: ${{ inputs.python-variant }}
+        RELEASE_THROUGH: ${{ inputs.release-through }}
+        VERIFY_DOWNLOAD: ${{ inputs.verify-download }}
+      run: |
+        set -euo pipefail
+        venv=$(mktemp -d "$RUNNER_TEMP/ovms-updater.XXXXXX")
+        python3 -m venv "$venv"
+        "$venv/bin/python" -m pip install --quiet -r "$ACTION_PATH/requirements.txt"
+        args=(--python-variant "$PYTHON_VARIANT")
+        if [[ -n "$RELEASE_THROUGH" ]]; then
+          args+=(--release-through "$RELEASE_THROUGH")
+        fi
+        case "$VERIFY_DOWNLOAD" in
+          true) args+=(--verify-download) ;;
+          false) ;;
+          *) echo "::error::verify-download must be true or false"; exit 1 ;;
+        esac
+        "$venv/bin/python" "$ACTION_PATH/update.py" "${args[@]}" snap/snapcraft.yaml
+        git diff -- snap/snapcraft.yaml
