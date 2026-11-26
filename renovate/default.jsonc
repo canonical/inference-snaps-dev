@@ -53,9 +53,18 @@
       "managerFilePatterns": [
         "snap/snapcraft.yaml"
       ],
+      // The version appears twice in the URL, e.g.
+      //   .../download/v2026.3/ovms_ubuntu24_2026.3.0_python_off.tar.gz
+      //                 ^tag        ^depType ^filename version
+      // Tags may drop a trailing ".0" but filenames never do, so the URL is
+      // rebuilt from newValue rather than substituting currentValue in place,
+      // and `replace` pads X.Y to X.Y.0 for the filename version.
+      // The OS (e.g. ubuntu24) is captured as depType because Renovate only
+      // passes its own fields to templates, not custom named groups.
       "matchStrings": [
-        "https://github\\.com/openvinotoolkit/model_server/releases/download/v(?<currentValue>[^/]+)/ovms_[^_]+_[^_]+_"
+        "openvinotoolkit/model_server/releases/download/v(?<currentValue>[^/]+)/ovms_(?<depType>[^_]+)_[^_]+_"
       ],
+      "autoReplaceStringTemplate": "openvinotoolkit/model_server/releases/download/v{{{newValue}}}/ovms_{{{depType}}}_{{{replace '^(\\d+\\.\\d+)$' '$1.0' newValue}}}_",
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "openvinotoolkit/model_server",
       "extractVersionTemplate": "^v(?<version>.+)$",
