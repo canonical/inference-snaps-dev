@@ -1,0 +1,195 @@
+name: Test snap
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs: &workflow-inputs
+      testflinger-client-id:
+        description: Testflinger client ID (defaults to TESTFLINGER_CLIENT_ID repo variable)
+        required: false
+        type: string
+      job-queue:
+        description: 'Testflinger queue'
+        required: true
+        type: string
+      provision-data:
+        description: 'Testflinger provision data as a single line of yaml or json'
+        required: false
+        type: string
+
+      # Snap to test
+      snap-name:
+        description: 'Snap name'
+        required: true
+        type: string
+      snap-channel:
+        description: 'Snap store channel'
+        required: true
+        type: string
+      devmode:
+        description: 'Whether to install the snap in developer mode'
+        default: false
+        type: boolean
+
+      # Drivers and other prerequisites to set up before installation of the snap
+      install-nvidia-driver-version:
+        description: |
+          NVIDIA driver version to install.
+          To install a specific version, set to the version, such as "595".
+          Set to "stable" to use STABLE_NVIDIA_DRIVER_VERSION from this workflow.
+          Set to "latest" to install the newest archive version.
+          Leave it unset to skip installation.
+        required: false
+        type: string
+      install-intel-npu-driver:
+        description: 'Install the Intel NPU driver snap'
+        default: false
+        type: boolean
+      snap-connections:
+        description: |
+          A comma separated list of plugs to connect after installing the snap.
+          A slot can be specified like in the snap connect command.
+        required: false
+        type: string
+
+      # Autoselection is always performed during snap installation
+      expected-engine:
+        description: 'Expected auto-selected engine'
+        required: false
+        type: string
+      select-engine:
+        description: 'Engine to explicitly select'
+        required: false
+        type: string
+
+      # Test chat prompt and check TPS
+      test-chat-tps:
+        description: 'Perform text prompt and measure TPS'
+        required: false
+        type: boolean
+        default: false
+      expected-tps:
+        description: 'Expected inference speed'
+        required: false
+        type: string
+        default: "0"
+
+      # Test image prompt
+      test-image-prompt:
+        description: 'Perform a prompt with an image'
+        required: false
+        type: boolean
+        default: false
+
+      # Other tests...
+
+  workflow_call:
+    inputs: *workflow-inputs
+    secrets:
+      testflinger-secret-key:
+        description: Testflinger secret key (defaults to TESTFLINGER_SECRET_KEY repo secret)
+        required: false
+
+jobs:
+  test-snap:
+    runs-on: ubuntu-latest
+    name: ${{ inputs.select-engine }} (${{ inputs.job-queue }})
+
+    env:
+      REUSABLE_WORKFLOW_REPO: inference-snaps-dev
+      REUSABLE_JOB_FILE: ${{ github.workspace }}/inference-snaps-dev/tests/testflinger/testflinger-jobs/test-snap.yaml
+      STABLE_NVIDIA_DRIVER_VERSION: '595'
+
+    steps:
+      - name: Show configuration
+        run: |
+          echo ::notice::\
+          Testflinger \
+          queue: ${{ inputs.job-queue }}, \
+           \
+          Snap \
+          Name: ${{ inputs.snap-name }}, \
+          Channel: ${{ inputs.snap-channel }}, \
+          Devmode: ${{ inputs.devmode }}, \
+           \
+          Prerequisites \
+          NVIDIA driver: ${{ inputs.install-nvidia-driver-version }}, \
+          Intel NPU driver: ${{ inputs.install-intel-npu-driver }}, \
+          Snap connections: ${{ inputs.snap-connections }}, \
+           \
+          Engine \
+          Expected: ${{ inputs.expected-engine }}, \
+          Select: ${{ inputs.select-engine }}, \
+           \
+          Chat prompt \
+          Perform test: ${{ inputs.test-chat-tps }}, \
+          Expect TPS: ${{ inputs.expected-tps }}, \
+           \
+          Image prompt \
+          Perform test: ${{ inputs.test-image-prompt }}, \
+
+      - name: Checkout reusable workflow repo
+        uses: actions/checkout@v7
+        with:
+          # Check out the repo and commit this workflow file was loaded from, so the test scripts
+          # always match the workflow revision the caller pinned (e.g. @v2 or a development branch).
+          # The github context can't be used here: when called from a snap repo it describes the caller.
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: ${{ env.REUSABLE_WORKFLOW_REPO }}
+
+      - name: Install workflow dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends gettext-base
+
+      - name: Add configuration to job
+        # This step substitutes the env vars in the testflinger job file with their values from workflow inputs
+        env:
+          JOB_QUEUE: ${{ inputs.job-queue }}
+          # provision data added in next step
+
+          SNAP_NAME: ${{ inputs.snap-name }}
+          SNAP_CHANNEL: ${{ inputs.snap-channel }}
+          DEVMODE: ${{ inputs.devmode }}
+
+          INSTALL_NVIDIA_DRIVER_VERSION: ${{ inputs.install-nvidia-driver-version == 'stable' && env.STABLE_NVIDIA_DRIVER_VERSION || inputs.install-nvidia-driver-version }}
+          INSTALL_INTEL_NPU_DRIVER: ${{ inputs.install-intel-npu-driver }}
+          SNAP_CONNECTIONS: ${{ inputs.snap-connections }}
+
+          EXPECTED_ENGINE: ${{ inputs.expected-engine }}
+          SELECT_ENGINE: ${{ inputs.select-engine }}
+
+          TEST_CHAT_TPS: ${{ inputs.test-chat-tps }}
+          EXPECTED_TPS: ${{ inputs.expected-tps }}
+
+          TEST_IMAGE_PROMPT: ${{ inputs.test-image-prompt }}
+
+        run: |
+          envsubst \
+            < ${{ env.REUSABLE_JOB_FILE }} \
+            > ${{ env.REUSABLE_JOB_FILE }}.temp
+          mv ${{ env.REUSABLE_JOB_FILE }}.temp ${{ env.REUSABLE_JOB_FILE }}
+
+      - name: Add provision data to job if set
+        if: inputs.provision-data != ''
+        env:
+          PROVISION_DATA: ${{ inputs.provision-data }}
+        run: |
+          yq eval '
+          .provision_data = (strenv(PROVISION_DATA) | from_yaml) |
+          .provision_data style=""
+          ' -i ${{ env.REUSABLE_JOB_FILE }}
+
+      - name: Show testflinger job
+        run: |
+          cat ${{ env.REUSABLE_JOB_FILE }}
+
+      - name: Run testflinger job
+        uses: canonical/testflinger/.github/actions/submit@main
+        with:
+          poll: true
+          retries: 3
+          job-path: ${{ env.REUSABLE_JOB_FILE }}
+          client-id: ${{ inputs.testflinger-client-id || vars.TESTFLINGER_CLIENT_ID }}
+          secret-key: ${{ secrets.testflinger-secret-key || secrets.TESTFLINGER_SECRET_KEY }}
