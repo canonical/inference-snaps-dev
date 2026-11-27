@@ -45,7 +45,7 @@ uses: canonical/inference-snaps-dev/.github/workflows/reuse-pr-build-test.yaml@<
 
 ## From your machine
 
-Submit a job with the same job file as CI. Requires the `testflinger` CLI and `yq`.
+Submit a job with the same job file as CI. Requires the `testflinger` CLI, `envsubst` (`gettext-base`) and `yq`.
 
 ```shell
 JOB_QUEUE=maas-systemtests-amd64 SNAP_NAME=smollm2 SNAP_CHANNEL=latest/edge SELECT_ENGINE=cpu \

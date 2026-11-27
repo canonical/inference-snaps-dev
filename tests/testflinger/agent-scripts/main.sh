@@ -1,3 +1,4 @@
+#!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Subscripts can set env vars which are used in following scripts. Therefore call them with source.

@@ -128,7 +128,7 @@ while [ $retry_count -lt $max_retries ] && [ "$success" = false ]; do
     else
       echo "Get logs"
       _run sudo snap logs "$SNAP_NAME" -n 1000
-      echo "::error::Failed to prompt model: $models_result"
+      echo "::error::Failed to prompt model: $response"
       echo "::endgroup::"
       exit 1
     fi
@@ -157,7 +157,7 @@ while [ $retry_count -lt $max_retries ] && [ "$success" = false ]; do
   exit_code=$?
   set -e
 
-  if [ $exit_code -ne 0 ] || [ -z ${#response_content} ]; then
+  if [ $exit_code -ne 0 ] || [ -z "$response_content" ]; then
     echo "Failed to extract response content (attempt $((retry_count + 1))/$max_retries)"
     retry_count=$((retry_count + 1))
     if [ $retry_count -lt $max_retries ]; then
