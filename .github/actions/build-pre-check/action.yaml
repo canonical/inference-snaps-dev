@@ -1,0 +1,39 @@
+name: Build pre-check
+description: Check whether a successful run already exists for this commit and workflow
+
+inputs:
+  workflow-name:
+    description: Name of the workflow to search for successful runs
+    required: true
+
+outputs:
+  build-success:
+    description: "true if at least one successful run exists for commit and workflow"
+    value: ${{ steps.build-pre-check.outputs.build-success }}
+
+runs:
+  using: composite
+  steps:
+    - id: build-pre-check
+      name: Check for existing successful build
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        # Exit with non-zero if any command fails, any variable is unset, or any command in a pipeline fails.
+        set -euo pipefail
+
+        commit_sha="${{ github.event.pull_request.head.sha }}"
+        successful_runs_count="$(gh run list \
+          --repo "${{ github.repository }}" \
+          --commit "$commit_sha" \
+          --json conclusion,workflowName \
+          --jq "[.[] | select(.conclusion == \"success\" and .workflowName == \"${{ inputs.workflow-name }}\")] | length")"
+
+        if [ "$successful_runs_count" -gt 0 ]; then
+          echo "Found successful run(s) for commit $commit_sha"
+          echo "build-success=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "No successful runs found for commit $commit_sha"
+          echo "build-success=false" >> "$GITHUB_OUTPUT"
+        fi

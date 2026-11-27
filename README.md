@@ -9,11 +9,13 @@ A few Reusable Workflows are available in the `.github/workflows` folder:
 - [reuse-cicd](./.github/workflows/reuse-cicd.yaml) - to run CICD on push events from the default branch
 - [reuse-pr-build-test](./.github/workflows/reuse-pr-build-test.yaml) - to build or build+test a snap depending on the PR label that triggered it
 - [reuse-triage-failures](./.github/workflows/reuse-triage-failures.yaml) - to triage and retry failed jobs classified as failures
+- [test-snap](./.github/workflows/test-snap.yaml) - to test a snap on real hardware with Testflinger. See [tests/testflinger](./tests/testflinger/README.md)
 
 ## Actions
 A few Actions are available in the `.github/actions` folder:
 
 - [agentic-test](./.github/actions/agentic-test/action.yaml) - to run the agentic snap test via Workshop & OpenCode
+- [build-pre-check](./.github/actions/build-pre-check/action.yaml) - to check whether a PR commit already has a successful build
 - [remove-label](./.github/actions/remove-label/action.yaml) - to remove a label from a PR after the associated workflow has run
 - [smoke-test](./.github/actions/smoke-test/action.yaml) - to run smoke tests against an installed snap
 

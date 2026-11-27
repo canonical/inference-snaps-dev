@@ -104,7 +104,7 @@ jobs:
     steps:
       - id: build-pre-check
         name: Check for existing successful build
-        uses: canonical/inference-snaps-testing/.github/actions/build-pre-check@v1
+        uses: canonical/inference-snaps-dev/.github/actions/build-pre-check@v2
         env:
           GH_TOKEN: ${{ secrets.github-token }}
         with:
@@ -137,7 +137,7 @@ jobs:
       fail-fast: false
       matrix:
         jobs: ${{ fromJSON(inputs.test-jobs-matrix) }}
-    uses: canonical/inference-snaps-testing/.github/workflows/test-snap.yaml@v1
+    uses: ./.github/workflows/test-snap.yaml
     with:
       job-queue: ${{ matrix.jobs.job-queue }}
       provision-data: ${{ matrix.jobs.provision-data }}
