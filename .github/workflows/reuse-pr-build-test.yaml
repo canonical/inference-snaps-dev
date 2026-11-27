@@ -104,7 +104,7 @@ jobs:
     steps:
       - id: build-pre-check
         name: Check for existing successful build
-        uses: canonical/inference-snaps-testing/.github/actions/build-pre-check@v1
+        uses: canonical/inference-snaps-dev/.github/actions/build-pre-check@v2
         env:
           GH_TOKEN: ${{ secrets.github-token }}
         with:
